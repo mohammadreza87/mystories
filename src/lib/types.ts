@@ -95,6 +95,7 @@ export interface Story {
   cover_image_url: string | null;
   age_range: string;
   estimated_duration: number;
+  reading_time?: number; // New field: estimated reading time in minutes
   story_context?: string | null;
   likes_count?: number;
   dislikes_count?: number;
