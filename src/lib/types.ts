@@ -109,6 +109,7 @@ export interface Story {
   nodes_generated?: number;
   total_nodes_planned?: number;
   language?: string | null;
+  target_audience?: 'children' | 'young_adult' | 'adult';
   creator?: {
     display_name: string | null;
     avatar_url: string | null;

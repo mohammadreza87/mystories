@@ -19,6 +19,8 @@ interface ImageRequest {
   size?: string;
   styleReference?: string;
   isAdultComic?: boolean;
+  isAdultContent?: boolean;
+  targetAudience?: 'children' | 'young_adult' | 'adult';
   modelId?: string;
 }
 
@@ -222,6 +224,133 @@ function detectComicStyle(styleReference: string): string | null {
   return null;
 }
 
+// List of sensitive terms to sanitize from prompts
+const SENSITIVE_TERMS: Record<string, string> = {
+  // Historical figures - replace with generic descriptions
+  'hitler': 'a stern military leader',
+  'nazi': 'authoritarian regime',
+  'nazis': 'authoritarian soldiers',
+  'holocaust': 'historical tragedy',
+  'stalin': 'a cold authoritarian leader',
+  'mussolini': 'a dictatorial figure',
+  'robespierre': 'a revolutionary leader in period clothing',
+  'guillotine': 'execution platform',
+  'mao': 'an eastern political leader',
+  'pol pot': 'a ruthless leader',
+  'bin laden': 'a bearded extremist figure',
+  'isis': 'militant group',
+  'al qaeda': 'terrorist organization',
+  'kkk': 'hooded figures',
+  'ku klux': 'hooded figures',
+  // Wars and violence - make more abstract
+  'world war': 'great historical conflict',
+  'ww2': 'mid-century conflict',
+  'ww1': 'early century conflict',
+  'genocide': 'mass tragedy',
+  'massacre': 'tragic event',
+  'concentration camp': 'detention facility',
+  'gas chamber': 'dark chamber',
+  'atomic bomb': 'devastating weapon',
+  'nuclear bomb': 'powerful explosion',
+  // Keep the scene dramatic but safe
+  'murder': 'dramatic confrontation',
+  'killing': 'intense conflict',
+  'torture': 'interrogation',
+  'execution': 'fateful moment',
+  'assassination': 'targeted attack',
+  'terrorist': 'extremist',
+  'terrorism': 'extremism',
+  // Political sensitivity
+  'swastika': 'authoritarian symbol',
+  'confederate': 'historical faction',
+  'slavery': 'historical oppression',
+  'slave': 'oppressed person',
+};
+
+// Detect historical/political era from prompt for better styling
+function detectHistoricalEra(prompt: string): string | null {
+  const lower = prompt.toLowerCase();
+
+  if (lower.includes('french revolution') || lower.includes('1789') || lower.includes('bastille')) {
+    return '18th century French, Baroque architecture, candlelit interiors, powdered wigs, ornate clothing';
+  }
+  if (lower.includes('world war 2') || lower.includes('ww2') || lower.includes('1940s') || lower.includes('nazi')) {
+    return '1940s wartime, sepia tones, military uniforms, war-torn landscapes';
+  }
+  if (lower.includes('world war 1') || lower.includes('ww1') || lower.includes('1914') || lower.includes('trench')) {
+    return '1910s wartime, muddy trenches, grey skies, military uniforms';
+  }
+  if (lower.includes('roman') || lower.includes('caesar') || lower.includes('rome') || lower.includes('gladiator')) {
+    return 'Ancient Roman, marble columns, togas, Mediterranean architecture, golden sunlight';
+  }
+  if (lower.includes('viking') || lower.includes('norse') || lower.includes('valhalla')) {
+    return 'Viking era, Nordic landscapes, wooden longships, fur cloaks, runic symbols';
+  }
+  if (lower.includes('medieval') || lower.includes('knight') || lower.includes('castle') || lower.includes('king')) {
+    return 'Medieval European, stone castles, armor, tapestries, torchlit halls';
+  }
+  if (lower.includes('renaissance') || lower.includes('medici') || lower.includes('florence')) {
+    return 'Italian Renaissance, grand palaces, artistic masterpieces, elegant robes';
+  }
+  if (lower.includes('cold war') || lower.includes('soviet') || lower.includes('kgb') || lower.includes('1960s')) {
+    return '1960s Cold War era, brutalist architecture, formal suits, tension-filled atmosphere';
+  }
+  if (lower.includes('prohibition') || lower.includes('1920s') || lower.includes('speakeasy') || lower.includes('gangster')) {
+    return '1920s Art Deco, jazz age, pinstripe suits, smoky bars, vintage automobiles';
+  }
+  if (lower.includes('silicon valley') || lower.includes('tech') || lower.includes('startup')) {
+    return 'Modern tech office, glass buildings, minimalist design, screens and devices';
+  }
+
+  return null;
+}
+
+function sanitizePromptForImageGeneration(prompt: string): string {
+  let sanitized = prompt;
+
+  // Replace sensitive terms with safer alternatives
+  for (const [term, replacement] of Object.entries(SENSITIVE_TERMS)) {
+    const regex = new RegExp(`\\b${term}\\b`, 'gi');
+    sanitized = sanitized.replace(regex, replacement);
+  }
+
+  // Remove any remaining potentially problematic phrases
+  sanitized = sanitized
+    .replace(/\b(kill|killed|killing|death|dead|die|dying|dies)\b/gi, 'fall')
+    .replace(/\b(blood|bloody|bleeding)\b/gi, 'red')
+    .replace(/\b(corpse|body|bodies)\b/gi, 'figure')
+    .replace(/\b(gun|rifle|pistol|weapon)\b/gi, 'object')
+    .replace(/\b(shoot|shooting|shot)\b/gi, 'action')
+    .replace(/\b(bomb|bombing|explosion)\b/gi, 'dramatic event')
+    .replace(/\b(war|battle|combat|fight|fighting)\b/gi, 'conflict');
+
+  return sanitized;
+}
+
+function buildSafeImagePrompt(originalPrompt: string, isAdult: boolean): string {
+  if (!isAdult) {
+    return originalPrompt; // Children's content doesn't need sanitization
+  }
+
+  // Sanitize the prompt
+  const sanitizedPrompt = sanitizePromptForImageGeneration(originalPrompt);
+
+  // Detect historical era for better styling
+  const eraStyle = detectHistoricalEra(originalPrompt);
+
+  // Build a safe but evocative prompt
+  let safePrompt = sanitizedPrompt;
+
+  if (eraStyle) {
+    safePrompt = `${eraStyle}. ${sanitizedPrompt}`;
+  }
+
+  // Add artistic direction to make it clearly fictional/artistic
+  safePrompt += ' Dramatic cinematic lighting, artistic interpretation, movie poster quality, award-winning cinematography.';
+
+  return safePrompt;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -234,7 +363,10 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     console.log("Received request body:", body);
 
-    const { prompt, styleReference, isAdultComic, modelId }: ImageRequest = body;
+    const { prompt, styleReference, isAdultComic, isAdultContent, targetAudience, modelId }: ImageRequest = body;
+
+    // Determine if this is adult content that needs sanitization
+    const isAdult = isAdultContent || isAdultComic || targetAudience === 'adult' || targetAudience === 'young_adult';
 
     if (!prompt) {
       console.error("No prompt provided in request");
@@ -299,22 +431,28 @@ Deno.serve(async (req: Request) => {
       };
     }
 
-    // Build the prompt
+    // Build the prompt with sanitization for adult content
     const safeStyle = (styleReference || "").slice(0, 800);
-    const safePrompt = (prompt || "").slice(0, 800);
+    const rawPrompt = (prompt || "").slice(0, 800);
+
+    // Apply sanitization for adult content to avoid content moderation issues
+    const sanitizedPrompt = isAdult ? buildSafeImagePrompt(rawPrompt, true) : rawPrompt;
 
     let fullPrompt: string;
 
     if (isComic) {
       // Adult comic book style prompt
       fullPrompt = styleReference
-        ? `${safeStyle} ${safePrompt} Professional comic book art, cinematic composition, dramatic lighting, no text or speech bubbles, highly detailed.`
-        : `${safePrompt} Professional comic book panel, graphic novel style, cinematic composition, dramatic lighting, no text or speech bubbles, highly detailed.`;
+        ? `${safeStyle} ${sanitizedPrompt} Professional comic book art, cinematic composition, dramatic lighting, no text or speech bubbles, highly detailed.`
+        : `${sanitizedPrompt} Professional comic book panel, graphic novel style, cinematic composition, dramatic lighting, no text or speech bubbles, highly detailed.`;
+    } else if (isAdult) {
+      // Adult/historical content - dramatic and cinematic
+      fullPrompt = `Cinematic dramatic scene: ${sanitizedPrompt} Professional photography quality, movie still, dramatic lighting, highly detailed, artistic interpretation, no text or letters.`;
     } else {
       // Children's book style prompt
       fullPrompt = styleReference
-        ? `Children's book illustration style. ${safeStyle}. Scene: ${safePrompt}. Colorful, warm, friendly, whimsical, no text or letters.`
-        : `Children's book illustration: ${safePrompt}. Colorful, friendly, warm, whimsical style, suitable for ages 5-10. No text or letters.`;
+        ? `Children's book illustration style. ${safeStyle}. Scene: ${rawPrompt}. Colorful, warm, friendly, whimsical, no text or letters.`
+        : `Children's book illustration: ${rawPrompt}. Colorful, friendly, warm, whimsical style, suitable for ages 5-10. No text or letters.`;
     }
 
     console.log("Generating image with Leonardo AI, config:", {

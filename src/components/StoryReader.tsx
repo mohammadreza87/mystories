@@ -160,7 +160,8 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
           },
           body: JSON.stringify({
             prompt,
-            styleReference: imageStyleReference
+            styleReference: imageStyleReference,
+            targetAudience: story?.target_audience || 'children'
           }),
         }
       );

@@ -178,7 +178,7 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ prompt: imagePrompt }),
+          body: JSON.stringify({ prompt: imagePrompt, targetAudience }),
         }
       ).then(async (imageResponse) => {
         if (imageResponse.ok) {
