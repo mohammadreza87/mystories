@@ -15,6 +15,7 @@ interface StoryRequest {
   userPrompt?: string;
   generateFullStory?: boolean;
   chapterCount?: number;
+  targetAudience?: 'children' | 'young_adult' | 'adult';
 }
 
 interface GeneratedStory {
@@ -80,7 +81,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { storyContext, userChoice, previousContent, storyTitle, userPrompt, generateFullStory, chapterCount }: StoryRequest = await req.json();
+    const { storyContext, userChoice, previousContent, storyTitle, userPrompt, generateFullStory, chapterCount, targetAudience = 'children' }: StoryRequest = await req.json();
 
     // Only check usage limits for full story generation (new story creation)
     if (generateFullStory) {
@@ -151,8 +152,47 @@ Deno.serve(async (req: Request) => {
     let systemPrompt = "";
     let actualUserPrompt = "";
 
+    // Audience-specific configurations
+    const audienceConfig = {
+      children: {
+        ageRange: "5-10",
+        contentRules: "Child-appropriate content only. No violence, fear, weapons, death, or mature themes. Simple vocabulary.",
+        chapterLength: "2-3 SHORT paragraphs (4-5 sentences max)",
+        artStyle: "Warm, colorful children's book illustration",
+        endingTypes: "happy/learning_moment/neutral",
+        minChapters: 3,
+        maxChapters: 6,
+        maxTokens: 480,
+        contextLength: 1200,
+      },
+      young_adult: {
+        ageRange: "13-18",
+        contentRules: "Teen-appropriate content. Mild conflict and drama allowed. No explicit content.",
+        chapterLength: "3-4 paragraphs with more detail and emotional depth",
+        artStyle: "Dynamic, modern YA book cover style",
+        endingTypes: "triumphant/bittersweet/cliffhanger/redemption",
+        minChapters: 4,
+        maxChapters: 10,
+        maxTokens: 700,
+        contextLength: 2000,
+      },
+      adult: {
+        ageRange: "18+",
+        contentRules: "Adult content allowed. Complex themes, moral ambiguity, historical accuracy, political intrigue, war, consequences. No explicit sexual content.",
+        chapterLength: "4-6 detailed paragraphs with rich narrative, dialogue, and character development",
+        artStyle: "Cinematic, realistic, dramatic illustration",
+        endingTypes: "triumphant/tragic/bittersweet/ambiguous/pyrrhic_victory/redemption",
+        minChapters: 5,
+        maxChapters: 15,
+        maxTokens: 1200,
+        contextLength: 3000,
+      },
+    };
+
+    const config = audienceConfig[targetAudience] || audienceConfig.children;
+
     if (generateFullStory && userPrompt) {
-      systemPrompt = `Create children's story metadata and opening chapter.
+      systemPrompt = `Create interactive story metadata and opening chapter for ${config.ageRange} audience.
 
 Language rules (MANDATORY):
 - Detect the language of the user prompt.
@@ -160,82 +200,92 @@ Language rules (MANDATORY):
 - If the user writes in English, respond ONLY in English.
 - Never switch languages or translate to a different language.
 
-Rules:
-- Age 5-10, child-appropriate content
-- Opening: 2-3 SHORT paragraphs (4-5 sentences max)
-- Provide 2-3 meaningful choices
+Content rules for ${targetAudience} audience:
+${config.contentRules}
+
+Writing style:
+- Opening chapter: ${config.chapterLength}
+- Provide 2-3 meaningful choices that significantly impact the story direction
+- For historical/biographical stories: Present real decision points the subject faced
+- Make choices feel weighty with real consequences
 - Match language of user prompt exactly
 
 Return ONLY valid JSON:
 {
   "title": "Story Title",
-  "description": "1-2 sentence description",
-  "ageRange": "5-10",
-  "estimatedDuration": 10,
-  "storyContext": "Brief context for continuation",
-  "startContent": "Opening paragraphs (2-3 SHORT paragraphs)",
+  "description": "2-3 sentence compelling description",
+  "ageRange": "${config.ageRange}",
+  "estimatedDuration": ${targetAudience === 'adult' ? 25 : targetAudience === 'young_adult' ? 15 : 10},
+  "storyContext": "Detailed context for story continuation including key characters, setting, and narrative threads",
+  "startContent": "Opening chapter (${config.chapterLength})",
   "initialChoices": [
-    {"text": "Choice 1", "hint": "What might happen"},
-    {"text": "Choice 2", "hint": "What might happen"}
+    {"text": "Choice 1 - clear action", "hint": "Potential consequence or direction"},
+    {"text": "Choice 2 - alternative path", "hint": "Different outcome possibility"}
   ],
-  "language": "en", // ISO 639-1 code of detected language
+  "language": "en",
   "styleGuide": {
-    "characters": [{"name": "Name", "description": "Appearance, clothing, colors"}],
-    "artStyle": "Warm, colorful children's book illustration",
-    "setting": "Where the story takes place",
-    "colorPalette": "Primary colors to keep consistent"
+    "characters": [{"name": "Name", "description": "Detailed appearance, personality, motivations"}],
+    "artStyle": "${config.artStyle}",
+    "setting": "Detailed setting description",
+    "colorPalette": "Color scheme for visual consistency",
+    "tone": "Overall narrative tone (dark/light/neutral)"
   }
 }`;
 
       actualUserPrompt = `Story request: "${userPrompt}"
 
-Constraints:
-- Detect language of the request and use it everywhere (title/description/content/choices/styleGuide).
-- Keep it friendly for ages 5-10; no fear/violence/sadness/bullying/weapons.
-- Short sentences and simple words.`;
+Target audience: ${targetAudience} (${config.ageRange})
+Content guidelines: ${config.contentRules}
+
+Create an engaging, immersive opening that hooks the reader and presents meaningful choices.
+For historical/biographical content: Be historically accurate while allowing reader agency at key decision points.`;
     } else {
       const currentChapter = chapterCount || 0;
-      const minimumChapters = 3;
-      const maximumChapters = 6;
+      const minimumChapters = config.minChapters;
+      const maximumChapters = config.maxChapters;
       const shouldPreventEnding = currentChapter < minimumChapters;
       const mustEnd = currentChapter >= maximumChapters;
-      const shouldEncourageEnding = currentChapter >= 4 && currentChapter < maximumChapters;
+      const shouldEncourageEnding = currentChapter >= (maximumChapters - 2) && currentChapter < maximumChapters;
 
-      systemPrompt = `Children's story writer for ages 5-10. Write in SAME language as previous content.
+      systemPrompt = `Interactive story writer for ${config.ageRange} audience. Write in SAME language as previous content.
 
-Rules:
-- Child-appropriate, simple language, no fear/violence/bullying/weapons/sadness
-- 2 SHORT paragraphs (max 4-5 sentences total)
-- Stories must be ${minimumChapters}-${maximumChapters} chapters
-- ${shouldPreventEnding ? `Chapter ${currentChapter + 1}: DO NOT END. Provide 2-3 choices.` : mustEnd ? `Chapter ${currentChapter + 1}: THIS IS THE FINAL CHAPTER. You MUST end the story now. Set isEnding=true, provide endingType, set choices=[]` : shouldEncourageEnding ? `Chapter ${currentChapter + 1}: Start wrapping up. Resolve the main conflict and prepare to end.` : `Chapter ${currentChapter + 1}: Build to conclusion.`}
-- Endings: happy/learning_moment/neutral
+Content rules: ${config.contentRules}
+
+Writing rules:
+- Chapter length: ${config.chapterLength}
+- Stories should be ${minimumChapters}-${maximumChapters} chapters
+- ${shouldPreventEnding ? `Chapter ${currentChapter + 1}: DO NOT END. Provide 2-3 meaningful choices.` : mustEnd ? `Chapter ${currentChapter + 1}: THIS IS THE FINAL CHAPTER. You MUST end the story now. Set isEnding=true, provide endingType, set choices=[]` : shouldEncourageEnding ? `Chapter ${currentChapter + 1}: Start wrapping up. Build toward a satisfying conclusion.` : `Chapter ${currentChapter + 1}: Develop the plot with consequences from previous choice.`}
+- Ending types for this audience: ${config.endingTypes}
 - If ending: choices = []
+- Each choice should lead to meaningfully different outcomes
 
 Return ONLY JSON:
 {
-  "content": "Story text (2 SHORT paragraphs)",
-  "choices": [{"text": "Choice 1", "hint": "Hint"}],
+  "content": "Chapter content (${config.chapterLength})",
+  "choices": [{"text": "Choice action", "hint": "Consequence hint"}],
   "isEnding": false,
   "endingType": null
 }
 
-${shouldPreventEnding ? 'Must provide 2-3 choices.' : mustEnd ? 'MUST set isEnding=true, endingType (happy/learning_moment/neutral), choices=[]' : shouldEncourageEnding ? 'Continue building to ending or end if story naturally concludes.' : 'Continue or end appropriately.'}`;
+${shouldPreventEnding ? 'Must provide 2-3 impactful choices.' : mustEnd ? `MUST set isEnding=true, endingType (${config.endingTypes}), choices=[]` : shouldEncourageEnding ? 'Build toward conclusion or end if narratively appropriate.' : 'Continue story with meaningful progression.'}`;
 
       if (userChoice && previousContent) {
-        const trimmedPrevious = (previousContent || "").slice(-1200);
-        actualUserPrompt = `Title: ${storyTitle || "Adventure"}
+        const trimmedPrevious = (previousContent || "").slice(-config.contextLength);
+        actualUserPrompt = `Title: ${storyTitle || "Story"}
+Target audience: ${targetAudience}
 
-Previous (trimmed):
+Previous content:
 ${trimmedPrevious}
 
-Chosen: "${userChoice}"
+Reader chose: "${userChoice}"
 
-Continue in same language.`;
+Continue the story showing consequences of this choice. Maintain narrative consistency.`;
       } else {
-        const trimmedContext = (storyContext || "").slice(0, 1200);
+        const trimmedContext = (storyContext || "").slice(0, config.contextLength);
         actualUserPrompt = `Theme: ${trimmedContext}
+Target audience: ${targetAudience}
 
-Create opening with 2-3 choices in same language.`;
+Create opening with 2-3 meaningful choices.`;
       }
     }
 
@@ -251,8 +301,8 @@ Create opening with 2-3 choices in same language.`;
           { role: "system", content: systemPrompt },
           { role: "user", content: actualUserPrompt }
         ],
-        temperature: generateFullStory ? 0.5 : 0.55,
-        max_tokens: generateFullStory ? 650 : 480,
+        temperature: generateFullStory ? 0.6 : 0.65,
+        max_tokens: generateFullStory ? (config.maxTokens + 400) : config.maxTokens,
       }),
     });
 

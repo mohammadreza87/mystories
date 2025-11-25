@@ -12,6 +12,51 @@ interface StoryCreatorProps {
   onStoryCreated: (storyId: string) => void;
 }
 
+type TargetAudience = 'children' | 'young_adult' | 'adult';
+
+const audienceSuggestions: Record<TargetAudience, string[]> = {
+  children: [
+    'A brave astronaut discovers a planet made of candy',
+    'A young wizard learns to control the weather',
+    'A magical library where books come alive at night',
+    'A detective cat solves mysteries in the city',
+    'A time-traveling adventure to meet dinosaurs'
+  ],
+  young_adult: [
+    'A teenager discovers they can see glimpses of the future',
+    'A group of friends uncover a conspiracy at their school',
+    'A young athlete must choose between fame and friendship',
+    'A hacker accidentally exposes a government secret',
+    'Two rival students are forced to work together on a dangerous mission'
+  ],
+  adult: [
+    'What if Hitler had won World War 2?',
+    'The biography of Napoleon - make his key decisions',
+    'A Cold War spy must choose between loyalty and love',
+    'The rise and fall of a tech empire through moral dilemmas',
+    'Ancient Rome: Play as Julius Caesar at critical moments',
+    'The Cuban Missile Crisis from Kennedy\'s perspective'
+  ]
+};
+
+const audienceLabels: Record<TargetAudience, { label: string; description: string; badge: string }> = {
+  children: {
+    label: 'Children',
+    description: 'Ages 5-10, safe and fun content',
+    badge: '5-10'
+  },
+  young_adult: {
+    label: 'Young Adult',
+    description: 'Ages 13-18, teen-appropriate themes',
+    badge: '13-18'
+  },
+  adult: {
+    label: 'Adult',
+    description: 'Ages 18+, complex themes & historical',
+    badge: '18+'
+  }
+};
+
 export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -21,6 +66,7 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
   const [isPublic, setIsPublic] = useState(false);
   const [usage, setUsage] = useState<SubscriptionUsage | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [targetAudience, setTargetAudience] = useState<TargetAudience>('adult');
 
   useEffect(() => {
     loadUsage();
@@ -68,7 +114,8 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
           },
           body: JSON.stringify({
             userPrompt: prompt,
-            generateFullStory: true
+            generateFullStory: true,
+            targetAudience
           }),
         }
       );
@@ -117,8 +164,8 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
         .insert({
           title: generatedData.title,
           description: generatedData.description,
-          age_range: generatedData.ageRange || '13-18',
-          estimated_duration: generatedData.estimatedDuration || 10,
+          age_range: generatedData.ageRange || audienceLabels[targetAudience].badge,
+          estimated_duration: generatedData.estimatedDuration || (targetAudience === 'adult' ? 25 : targetAudience === 'young_adult' ? 15 : 10),
           story_context: generatedData.storyContext,
           created_by: userId,
           is_public: isPublic,
@@ -126,7 +173,8 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
           generation_status: 'first_chapter_ready',
           generation_progress: 10,
           language: generatedData.language || 'en',
-          cover_image_url: null, // Will be updated later
+          cover_image_url: null,
+          target_audience: targetAudience,
         })
         .select()
         .single();
@@ -222,13 +270,7 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
     }
   };
 
-  const suggestions = [
-    'A brave astronaut discovers a planet made of candy',
-    'A young wizard learns to control the weather',
-    'A magical library where books come alive at night',
-    'A detective cat solves mysteries in the city',
-    'A time-traveling adventure to meet dinosaurs'
-  ];
+  const suggestions = audienceSuggestions[targetAudience];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 pb-20 flex items-center justify-center">
@@ -250,13 +292,44 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
         </div>
 
         <div className="bg-white rounded-3xl shadow-xl p-6 mb-6">
+          {/* Audience Selector */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Target Audience
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              {(Object.keys(audienceLabels) as TargetAudience[]).map((audience) => (
+                <button
+                  key={audience}
+                  onClick={() => setTargetAudience(audience)}
+                  disabled={isGenerating}
+                  className={`p-3 rounded-xl border-2 transition-all disabled:opacity-50 ${
+                    targetAudience === audience
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                  }`}
+                >
+                  <div className="text-sm font-semibold">{audienceLabels[audience].label}</div>
+                  <div className="text-xs mt-1 opacity-75">{audienceLabels[audience].badge}</div>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              {audienceLabels[targetAudience].description}
+            </p>
+          </div>
+
           <label className="block text-sm font-semibold text-gray-700 mb-3">
             What kind of story do you want?
           </label>
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="E.g., A story about a young hero who discovers they have magical powers..."
+            placeholder={targetAudience === 'adult'
+              ? "E.g., What if the Roman Empire never fell? or The biography of Genghis Khan..."
+              : targetAudience === 'young_adult'
+              ? "E.g., A teenager discovers a hidden world beneath their city..."
+              : "E.g., A brave knight saves a friendly dragon..."}
             className="w-full h-32 px-4 py-3 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-blue-400 resize-none text-gray-800"
             disabled={isGenerating}
           />

@@ -159,8 +159,10 @@ async function generateStoryTree(
       }
 
       try {
-        const trimmedContext = (story.story_context || "").slice(0, 1200);
-        const trimmedPrevious = (node.previousContent || "").slice(-1200);
+        const targetAudience = story.target_audience || 'children';
+        const contextLength = targetAudience === 'adult' ? 3000 : targetAudience === 'young_adult' ? 2000 : 1200;
+        const trimmedContext = (story.story_context || "").slice(0, contextLength);
+        const trimmedPrevious = (node.previousContent || "").slice(-contextLength);
 
         const response = await fetch(
           `${supabaseUrl}/functions/v1/generate-story`,
@@ -176,6 +178,7 @@ async function generateStoryTree(
               previousContent: trimmedPrevious,
               storyTitle: story.title,
               chapterCount: node.depth,
+              targetAudience,
             }),
           }
         );
@@ -186,7 +189,10 @@ async function generateStoryTree(
 
         const generatedContent = await response.json();
 
-        const isKidFriendly = await validateKidFriendlyContent(generatedContent.content, deepseekApiKey);
+        // Only validate kid-friendly for children's content
+        const isKidFriendly = targetAudience === 'children'
+          ? await validateKidFriendlyContent(generatedContent.content, deepseekApiKey)
+          : true;
         if (!isKidFriendly) {
           console.warn(`Content not kid-friendly for node ${node.nodeKey}, regenerating...`);
           continue;
