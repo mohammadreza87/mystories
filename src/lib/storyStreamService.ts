@@ -168,7 +168,7 @@ export async function preGenerateCommonPatterns(): Promise<void> {
   if (!user) return;
 
   const { data: profile } = await supabase
-    .from('user_profiles')
+    .from('profiles')
     .select('subscription_tier, is_grandfathered')
     .eq('id', user.id)
     .maybeSingle();

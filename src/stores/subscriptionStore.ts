@@ -85,7 +85,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
 
     try {
       const { data: profile } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select(`
           subscription_tier,
           subscription_status,

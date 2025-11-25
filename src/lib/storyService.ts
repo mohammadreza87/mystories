@@ -13,7 +13,7 @@ export async function getStories(): Promise<Story[]> {
   const storiesWithCreators = await Promise.all(
     stories.map(async (story) => {
       const { data: creator } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('display_name, avatar_url')
         .eq('id', story.created_by)
         .maybeSingle();
@@ -53,7 +53,7 @@ export async function getUserStories(userId: string): Promise<Story[]> {
   const storiesWithCreators = await Promise.all(
     stories.map(async (story) => {
       const { data: creator } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('display_name, avatar_url')
         .eq('id', story.created_by)
         .maybeSingle();
@@ -94,7 +94,7 @@ export async function getPublicUserStories(userId: string): Promise<Story[]> {
   const storiesWithCreators = await Promise.all(
     stories.map(async (story) => {
       const { data: creator } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('display_name, avatar_url')
         .eq('id', story.created_by)
         .maybeSingle();
@@ -305,7 +305,7 @@ export async function getStory(storyId: string): Promise<Story | null> {
   if (!story) return null;
 
   const { data: creator } = await supabase
-    .from('user_profiles')
+    .from('profiles')
     .select('display_name, avatar_url')
     .eq('id', story.created_by)
     .maybeSingle();

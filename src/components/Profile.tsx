@@ -59,7 +59,7 @@ export function Profile({ userId, onSelectStory }: ProfileProps) {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'user_profiles',
+          table: 'profiles',
           filter: `id=eq.${userId}`,
         },
         () => {
@@ -78,7 +78,7 @@ export function Profile({ userId, onSelectStory }: ProfileProps) {
 
     try {
       const { data } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('username, display_name, bio, avatar_url')
         .eq('id', user.id)
         .maybeSingle();
