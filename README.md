@@ -1,230 +1,79 @@
-# MyStories - AI-Powered Interactive Story Platform
+# MyStories
 
-**Create, share, and experience Young Adult interactive stories with AI-generated illustrations and narration.**
+AI-powered interactive YA stories with streaming generation, illustrations, narration, and gamification. Readers branch through stories with choices, track progress, react, and follow creators. Creators can generate YA narratives or adult comic-style stories with consistent art via a story bible.
 
-MyStories is a modern web application focused on Young Adult (YA) storytelling - featuring post-apocalyptic survival, sci-fi time travel, supernatural mysteries, and emotional adventures. Create your own branching YA narratives inspired by stories like Hunger Games, Stranger Things, and more, where each choice shapes your unique journey.
+## What’s Inside
+- **Story creation**: Generate the first chapter instantly, then continue paths on demand (DeepSeek). Optional background queue to pre-generate more nodes.
+- **Media**: Cover/chapter images via DALL-E 3 or Leonardo; OpenAI TTS narration with word highlighting.
+- **Comic mode**: Story bible + chapter generation for adult comics with consistent art prompts and optional panel images.
+- **Engagement**: Likes/dislikes, follows, trending feed, reading progress/completions, quests, streaks, and points.
+- **Monetization**: Stripe checkout/portal with free (1 story/day) vs Pro (unlimited) enforcement in edge functions.
 
-## Featured YA Genres
+## Tech
+- React 18 + TypeScript, Vite, Tailwind, React Router 7, Zustand.
+- Supabase: Auth, Postgres (RLS), Storage, and many Edge Functions.
+- AI providers: DeepSeek (text), OpenAI (images/tts), Leonardo (alt images).
+- Payments: Stripe Checkout + webhooks.
 
-### Core Themes
-- **Post-Apocalyptic Survival**: Stories inspired by Hunger Games and Maze Runner
-- **Sci-Fi & Time Travel**: Mind-bending adventures through time and space
-- **Mystery & Supernatural**: Stranger Things-style mysteries with supernatural elements
-- **Emotional Drama & Adventure**: Heartfelt stories combining romance, friendship, and adventure
+## Key Paths
+- `src/components`: StoryReader, StoryCreator, ComicCreator, StoryLibrary/Detail, Profile/PublicProfile, Quests, Subscription UI.
+- `src/lib`: Supabase client, services (story/quests/points/subscription/follow/stripe), story bible tooling, streaming helper.
+- `supabase/functions`: 
+  - Generation: `generate-story`, `generate-story-stream`, `generate-image`, `generate-cover-image`, `generate-all-images`, `generate-story-bible`, `generate-comic-chapter`, `text-to-speech`.
+  - Pipelines/queues: `process-story-queue`, `process-comic-queue`, `get-trending-stories`.
+  - Gamification: `get-quests`, `progress-quest`, `track-activity`.
+  - Billing: `create-checkout`, `customer-portal`, `stripe-checkout`, `stripe-webhook`.
+- `supabase/migrations`: Tables for stories/nodes/choices/bibles, generation queue, reactions, reading_progress & story_completions, quests/streaks, bookmarks, follow graph, Stripe tables, subscription/usage counters.
+- Docs: `GAMIFICATION_STRATEGY.md`, `GAMIFICATION_EXAMPLES.md`, `PERFORMANCE_OPTIMIZATIONS.md`, `MOBILE_APP_GUIDE.md`, `SUPABASE_SETUP.md`, `STRIPE_SETUP.md`.
 
-## Features
-
-### Story Creation
-- **AI-Powered Generation**: Automatically generate complete interactive stories with multiple branching paths
-- **Dynamic Content**: Stories adapt based on reader choices, creating unique experiences
-- **Visual Storytelling**: AI-generated illustrations for every scene using DALL-E
-- **Audio Narration**: Text-to-speech narration brings stories to life
-- **Customizable Settings**: Choose age ranges, themes, and story length
-
-### Story Library
-- **Discover Stories**: Browse a curated collection of public stories
-- **Reading Experience**: Immersive reader interface with choices that matter
-- **Progress Tracking**: Automatic save and resume functionality
-- **Social Features**: Like/dislike stories and follow favorite creators
-- **Multiple Endings**: Stories feature different outcomes based on your choices
-
-### User Features
-- **Profiles**: Customizable user profiles with avatars and bios
-- **Story Management**: Organize your created stories and reading history
-- **Subscription Tiers**:
-  - **Free**: 1 story generation per day
-  - **Pro**: Unlimited story generation with priority processing
-
-### Technical Highlights
-- **Real-time Generation**: Watch stories come to life as they're generated
-- **Responsive Design**: Beautiful experience across all devices
-- **Secure Authentication**: Email/password authentication with Supabase
-- **Payment Integration**: Stripe-powered subscription management
-- **Progressive Image Loading**: Optimized media delivery
-
-## Technology Stack
-
-### Frontend
-- **React 18** with TypeScript
-- **Vite** for fast development and optimized builds
-- **Tailwind CSS** for modern, responsive styling
-- **Lucide React** for beautiful icons
-- **React Router** for seamless navigation
-
-### Backend
-- **Supabase** for database, authentication, and storage
-- **PostgreSQL** with Row Level Security for data protection
-- **Edge Functions** (Deno) for serverless API endpoints
-
-### AI & Media
-- **OpenAI GPT-4** for story generation
-- **DALL-E 3** for image generation
-- **OpenAI TTS** for audio narration
-
-### Payment Processing
-- **Stripe Checkout** for subscriptions
-- **Stripe Webhooks** for real-time subscription updates
-
-## Getting Started
-
-### Prerequisites
-- Node.js 18 or higher
-- npm or yarn
-- Supabase account
-- OpenAI API key
-- Stripe account (for subscriptions)
-
-### Installation
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd mystories
+## Environment
+Frontend `.env`:
+```
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+VITE_STRIPE_PUBLISHABLE_KEY=
+VITE_STRIPE_PRICE_MONTHLY=
+VITE_STRIPE_PRICE_ANNUAL=
 ```
 
-2. Install dependencies:
-```bash
-npm install
+Edge Function secrets (Supabase):
+```
+SUPABASE_URL=              # provided by Supabase
+SUPABASE_ANON_KEY=         # "
+SUPABASE_SERVICE_ROLE_KEY= # needed for queue/process functions
+OPENAI_API_KEY=
+DEEPSEEK_API_KEY=
+LEONARDO_API_KEY=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
 ```
 
-3. Set up environment variables:
-Create a `.env` file in the root directory:
-```env
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+## Setup
+1) Install deps: `npm install`  
+2) Configure `.env` with Supabase + Stripe keys above.  
+3) Supabase (CLI):
 ```
-
-4. Set up Supabase:
-- Create a new Supabase project
-- Run the migrations in `supabase/migrations/` in order
-- Configure environment variables in Supabase Edge Functions:
-  - `OPENAI_API_KEY`
-  - `STRIPE_SECRET_KEY`
-  - `STRIPE_WEBHOOK_SECRET`
-
-5. Start the development server:
-```bash
-npm run dev
+supabase link --project-ref <project-id>
+supabase db push
+supabase functions deploy generate-story generate-story-stream generate-image generate-cover-image generate-all-images generate-story-bible generate-comic-chapter process-story-queue process-comic-queue text-to-speech get-trending-stories get-quests progress-quest create-checkout customer-portal stripe-checkout stripe-webhook track-activity
 ```
+Create public storage buckets `story-images` and `avatars`.  
+4) Run dev server: `npm run dev` (Vite).  
+5) Tests: `npm run test` (vitest, minimal coverage for config/error helpers).
 
-## Project Structure
+## How It Works (high level)
+- **Story flow**: Frontend hits `generate-story` (DeepSeek) to seed chapters + choices, writes nodes/choices in Supabase, then optionally queues `process-story-queue` to expand branches; `generate-image`/`generate-cover-image` fill media; `text-to-speech` adds narration.
+- **Comic flow**: `generate-story-bible` crafts characters/style; `generate-comic-chapter` + `generate-image`/`text-to-speech` build panel-ready chapters; `process-comic-queue` expands pending nodes.
+- **Engagement**: `progress-quest`/`get-quests` manage streaks/quests; `track-activity` stamps last seen; reactions/follows stored in Postgres.
+- **Billing**: `create-checkout`/`stripe-checkout` start Stripe sessions; `stripe-webhook` syncs status and profile tier; frontend enforces free 1/day vs Pro unlimited.
 
-```
-├── src/
-│   ├── components/          # React components
-│   │   ├── auth/           # Authentication components
-│   │   └── subscription/   # Subscription components
-│   ├── lib/                # Utilities and services
-│   │   ├── supabase.ts    # Supabase client
-│   │   ├── authContext.tsx # Authentication context
-│   │   └── types.ts       # TypeScript types
-│   ├── pages/             # Page components
-│   └── App.tsx            # Main app component
-├── supabase/
-│   ├── functions/         # Edge functions
-│   │   ├── generate-story/       # Story generation
-│   │   ├── generate-image/       # Image generation
-│   │   ├── text-to-speech/       # Audio generation
-│   │   ├── create-checkout/      # Stripe checkout
-│   │   └── stripe-webhook/       # Stripe webhooks
-│   └── migrations/        # Database migrations
-└── dist/                  # Production build
-```
+## Notes
+- Performance tweaks documented in `PERFORMANCE_OPTIMIZATIONS.md` (non-blocking images, trimmed prompts, indexes).
+- Mobile wrapper guidance lives in `MOBILE_APP_GUIDE.md` (Capacitor).
+- Project ID in `SUPABASE_SETUP.md` is prefilled; update if you fork to a new Supabase project.
 
-## Database Schema
-
-### Core Tables
-- **stories**: Story metadata and generation status
-- **story_nodes**: Individual story scenes/chapters
-- **story_choices**: Branching decision points
-- **user_story_progress**: Reading progress tracking
-- **user_profiles**: User information and preferences
-- **story_reactions**: Likes/dislikes for stories
-
-### Subscription Tables
-- **stripe_customers**: User to Stripe customer mapping
-- **stripe_subscriptions**: Subscription status and details
-
-## Key Features Implementation
-
-### Story Generation Pipeline
-1. User provides story parameters (theme, age range, language)
-2. Backend generates story structure with GPT-4
-3. Story queued for processing
-4. Each node generated with content and image prompts
-5. Images generated with DALL-E 3
-6. Audio narration created with OpenAI TTS
-7. Real-time progress updates to frontend
-
-### Subscription System
-1. User selects plan (Free or Pro)
-2. Stripe Checkout session created
-3. User completes payment
-4. Webhook updates subscription status
-5. User profile upgraded to Pro tier
-6. Usage limits automatically enforced
-
-### Security
-- Row Level Security (RLS) on all tables
-- JWT-based authentication
-- Service role for backend operations
-- Secure API key management
-- HTTPS-only communication
-
-## Building for Production
-
-```bash
-npm run build
-```
-
-The production build will be created in the `dist/` directory.
-
-## Deployment
-
-The application is designed to be deployed on modern hosting platforms:
-- Frontend: Netlify, Vercel, or any static host
-- Backend: Supabase (managed)
-- Edge Functions: Supabase Edge Functions (Deno runtime)
-
-## Environment Variables
-
-### Frontend (.env)
-```env
-VITE_SUPABASE_URL=          # Your Supabase project URL
-VITE_SUPABASE_ANON_KEY=     # Supabase anonymous key
-VITE_STRIPE_PUBLISHABLE_KEY= # Stripe publishable key
-```
-
-### Backend (Supabase Edge Functions)
-```env
-OPENAI_API_KEY=             # OpenAI API key
-STRIPE_SECRET_KEY=          # Stripe secret key
-STRIPE_WEBHOOK_SECRET=      # Stripe webhook signing secret
-SUPABASE_URL=               # Auto-configured
-SUPABASE_SERVICE_ROLE_KEY=  # Auto-configured
-```
-
-## Contributing
-
-Contributions are welcome! Please follow these guidelines:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Write/update tests if applicable
-5. Submit a pull request
-
-## License
-
-This project is proprietary software. All rights reserved.
-
-## Support
-
-For issues, questions, or feature requests, please contact the development team.
-
-## Acknowledgments
-
-- OpenAI for GPT-4, DALL-E 3, and TTS APIs
-- Supabase for the backend infrastructure
-- Stripe for payment processing
-- The open-source community for amazing tools and libraries
+## Scripts
+- `npm run dev` – start Vite
+- `npm run build` – production bundle
+- `npm run lint` – eslint
+- `npm run test` / `npm run test:run` / `npm run test:coverage` – vitest
