@@ -62,7 +62,7 @@ Deno.serve(async (req: Request) => {
 
     // Points
     const { data: profile } = await supabase
-      .from("user_profiles")
+      .from("profiles")
       .select("points")
       .eq("id", user.id)
       .maybeSingle();

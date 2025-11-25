@@ -157,7 +157,7 @@ async function syncCustomerFromStripe(customerId: string) {
 
       if (userId) {
         await supabase
-          .from('user_profiles')
+          .from('profiles')
           .update({
             subscription_tier: 'free',
             subscription_status: 'active',
@@ -203,7 +203,7 @@ async function syncCustomerFromStripe(customerId: string) {
       const isActive = subscription.status === 'active' || subscription.status === 'trialing';
 
       await supabase
-        .from('user_profiles')
+        .from('profiles')
         .update({
           subscription_tier: isActive ? 'pro' : 'free',
           subscription_status: subscription.status,

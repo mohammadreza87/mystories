@@ -23,7 +23,7 @@ serve(async (req) => {
       .from('stories')
       .select(`
         *,
-        creator:user_profiles!stories_created_by_fkey(
+        creator:profiles!stories_created_by_fkey(
           display_name,
           avatar_url
         )

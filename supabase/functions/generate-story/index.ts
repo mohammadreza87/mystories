@@ -86,7 +86,7 @@ Deno.serve(async (req: Request) => {
     if (generateFullStory) {
       // Get user profile with subscription info
       const { data: profile, error: profileError } = await supabase
-        .from("user_profiles")
+        .from("profiles")
         .select("subscription_tier, is_grandfathered, stories_generated_today, last_generation_date")
         .eq("id", user.id)
         .maybeSingle();
@@ -313,15 +313,15 @@ Create opening with 2-3 choices in same language.`;
     if (generateFullStory) {
       const today = new Date().toISOString().split('T')[0];
       const { data: currentProfile } = await supabase
-        .from("user_profiles")
+        .from("profiles")
         .select("last_generation_date, stories_generated_today, total_stories_generated")
         .eq("id", user.id)
         .maybeSingle();
 
       const isNewDay = currentProfile?.last_generation_date !== today;
-      
+
       await supabase
-        .from("user_profiles")
+        .from("profiles")
         .update({
           stories_generated_today: isNewDay ? 1 : (currentProfile?.stories_generated_today || 0) + 1,
           last_generation_date: today,

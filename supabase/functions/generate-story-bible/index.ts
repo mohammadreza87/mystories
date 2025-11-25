@@ -232,7 +232,7 @@ Deno.serve(async (req: Request) => {
 
     // Check user limits (similar to generate-story)
     const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('subscription_tier, is_grandfathered, stories_generated_today, last_generation_date')
       .eq('id', user.id)
       .maybeSingle();

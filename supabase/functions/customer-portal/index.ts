@@ -61,7 +61,7 @@ Deno.serve(async (req: Request) => {
 
     // Get user's Stripe customer ID
     const { data: profile } = await supabase
-      .from("user_profiles")
+      .from("profiles")
       .select("stripe_customer_id")
       .eq("id", user.id)
       .maybeSingle();
