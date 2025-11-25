@@ -60,7 +60,7 @@ Deno.serve(async (req: Request) => {
     // Check usage limits for full story generation
     if (generateFullStory) {
       const { data: profile } = await supabase
-        .from("profiles")
+        .from("user_profiles")
         .select("subscription_tier, is_grandfathered, stories_generated_today, last_generation_date")
         .eq("id", user.id)
         .maybeSingle();
@@ -233,7 +233,7 @@ Create an engaging opening with 2-3 choices.`;
                       if (generateFullStory) {
                         const today = new Date().toISOString().split('T')[0];
                         const { data: currentProfile } = await supabase
-                          .from("profiles")
+                          .from("user_profiles")
                           .select("last_generation_date, stories_generated_today, total_stories_generated")
                           .eq("id", user.id)
                           .maybeSingle();
@@ -241,7 +241,7 @@ Create an engaging opening with 2-3 choices.`;
                         const isNewDay = currentProfile?.last_generation_date !== today;
 
                         await supabase
-                          .from("profiles")
+                          .from("user_profiles")
                           .update({
                             stories_generated_today: isNewDay ? 1 : (currentProfile?.stories_generated_today || 0) + 1,
                             last_generation_date: today,

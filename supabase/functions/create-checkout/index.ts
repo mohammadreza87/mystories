@@ -73,7 +73,7 @@ Deno.serve(async (req: Request) => {
 
       // Update user profile
       await supabaseAdmin
-        .from("profiles")
+        .from("user_profiles")
         .update({ stripe_customer_id: customerId })
         .eq("id", user.id);
     }
