@@ -1,73 +1,51 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+/**
+ * Create Stripe checkout session.
+ * Uses shared utilities for CORS, auth, and response handling.
+ */
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
-};
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import {
+  handleCors,
+  authenticate,
+  isAuthError,
+  createServiceClient,
+  success,
+  errors,
+} from "../_shared/index.ts";
 
 Deno.serve(async (req: Request) => {
+  // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders,
-    });
+    return handleCors();
   }
 
+  // Authenticate user
+  const auth = await authenticate(req);
+  if (isAuthError(auth)) {
+    return auth;
+  }
+
+  const { user } = auth;
+
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "No authorization header" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
+    // Parse request body
     const { priceId, successUrl, cancelUrl } = await req.json();
 
     if (!priceId || !successUrl || !cancelUrl) {
-      return new Response(
-        JSON.stringify({ error: "Missing required fields" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return errors.badRequest("Missing required fields: priceId, successUrl, cancelUrl");
     }
 
+    // Initialize Stripe
     const stripe = await import("npm:stripe@14.21.0");
     const stripeClient = new stripe.default(Deno.env.get("STRIPE_SECRET_KEY")!, {
       apiVersion: "2024-11-20.acacia",
     });
 
-    const supabaseServiceRole = createClient(
-      supabaseUrl,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    // Get service client for admin operations
+    const supabaseAdmin = createServiceClient();
 
-    const { data: existingCustomer } = await supabaseServiceRole
+    // Check for existing Stripe customer
+    const { data: existingCustomer } = await supabaseAdmin
       .from("stripe_customers")
       .select("customer_id")
       .eq("user_id", user.id)
@@ -75,6 +53,7 @@ Deno.serve(async (req: Request) => {
 
     let customerId = existingCustomer?.customer_id;
 
+    // Create Stripe customer if not exists
     if (!customerId) {
       const customer = await stripeClient.customers.create({
         email: user.email,
@@ -84,19 +63,22 @@ Deno.serve(async (req: Request) => {
       });
       customerId = customer.id;
 
-      await supabaseServiceRole
+      // Store customer mapping
+      await supabaseAdmin
         .from("stripe_customers")
         .insert({
           user_id: user.id,
           customer_id: customerId,
         });
 
-      await supabaseServiceRole
+      // Update user profile
+      await supabaseAdmin
         .from("user_profiles")
         .update({ stripe_customer_id: customerId })
         .eq("id", user.id);
     }
 
+    // Create checkout session
     const session = await stripeClient.checkout.sessions.create({
       customer: customerId,
       client_reference_id: user.id,
@@ -116,21 +98,12 @@ Deno.serve(async (req: Request) => {
       },
     });
 
-    return new Response(
-      JSON.stringify({ sessionId: session.id, url: session.url }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return success({ sessionId: session.id, url: session.url });
   } catch (error) {
     console.error("Checkout creation error:", error);
-    return new Response(
-      JSON.stringify({ error: "Failed to create checkout session", details: error.message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+    return errors.internal(
+      "Failed to create checkout session",
+      error instanceof Error ? error.message : undefined
     );
   }
 });
