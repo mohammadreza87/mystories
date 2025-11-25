@@ -23,21 +23,26 @@
 -- 1. FIX RLS POLICIES FOR PERFORMANCE
 -- ==========================================
 
--- Drop and recreate user_follows policies with optimized auth function calls
-DROP POLICY IF EXISTS "Users can follow others" ON user_follows;
-DROP POLICY IF EXISTS "Users can unfollow" ON user_follows;
+DO $$
+BEGIN
+  -- Only run if user_follows table exists
+  IF to_regclass('public.user_follows') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "Users can follow others" ON user_follows;
+    DROP POLICY IF EXISTS "Users can unfollow" ON user_follows;
 
-CREATE POLICY "Users can follow others"
-  ON user_follows
-  FOR INSERT
-  TO authenticated
-  WITH CHECK ((SELECT auth.uid()) = follower_id AND follower_id != following_id);
+    CREATE POLICY "Users can follow others"
+      ON user_follows
+      FOR INSERT
+      TO authenticated
+      WITH CHECK ((SELECT auth.uid()) = follower_id AND follower_id != following_id);
 
-CREATE POLICY "Users can unfollow"
-  ON user_follows
-  FOR DELETE
-  TO authenticated
-  USING ((SELECT auth.uid()) = follower_id);
+    CREATE POLICY "Users can unfollow"
+      ON user_follows
+      FOR DELETE
+      TO authenticated
+      USING ((SELECT auth.uid()) = follower_id);
+  END IF;
+END $$;
 
 -- ==========================================
 -- 2. DROP UNUSED INDEXES
