@@ -399,16 +399,17 @@ Deno.serve(async (req: Request) => {
       styleReference.toLowerCase().includes('cyberpunk')
     ));
 
-    // Build generation config based on content type
+    // Use consistent comic book style settings for all images
     let generationConfig: GenerationConfig = {
-      modelId: modelId || LEONARDO_MODELS.lucidOrigin,
+      modelId: modelId || LEONARDO_MODELS.kinoXL, // Kino XL is best for cinematic comic style
       styleUUID: LEONARDO_STYLES.cinematic,
-      contrast: 3.5,
+      contrast: 4, // Higher contrast for comic book look
       width: 1024,
       height: 1024,
     };
 
-    if (isComic && styleReference) {
+    // Adjust based on specific comic style if provided
+    if (styleReference) {
       const comicStyle = detectComicStyle(styleReference);
       if (comicStyle && COMIC_STYLE_CONFIG[comicStyle]) {
         const styleConfig = COMIC_STYLE_CONFIG[comicStyle];
@@ -420,15 +421,6 @@ Deno.serve(async (req: Request) => {
           height: 1024,
         };
       }
-    } else if (!isComic) {
-      // For children's book illustrations
-      generationConfig = {
-        modelId: LEONARDO_MODELS.phoenix,
-        styleUUID: LEONARDO_STYLES.vibrant,
-        contrast: 3,
-        width: 1024,
-        height: 1024,
-      };
     }
 
     // Build the prompt with sanitization for adult content
@@ -438,21 +430,17 @@ Deno.serve(async (req: Request) => {
     // Apply sanitization for adult content to avoid content moderation issues
     const sanitizedPrompt = isAdult ? buildSafeImagePrompt(rawPrompt, true) : rawPrompt;
 
+    // Universal comic book art style prefix for consistency
+    const COMIC_STYLE_PREFIX = `Professional comic book art style, graphic novel illustration, bold ink outlines, cel-shaded coloring, dramatic shadows, dynamic composition, cinematic panel layout, high contrast, vibrant colors, detailed backgrounds, professional sequential art quality`;
+
     let fullPrompt: string;
 
-    if (isComic) {
-      // Adult comic book style prompt
-      fullPrompt = styleReference
-        ? `${safeStyle} ${sanitizedPrompt} Professional comic book art, cinematic composition, dramatic lighting, no text or speech bubbles, highly detailed.`
-        : `${sanitizedPrompt} Professional comic book panel, graphic novel style, cinematic composition, dramatic lighting, no text or speech bubbles, highly detailed.`;
-    } else if (isAdult) {
-      // Adult/historical content - dramatic and cinematic
-      fullPrompt = `Cinematic dramatic scene: ${sanitizedPrompt} Professional photography quality, movie still, dramatic lighting, highly detailed, artistic interpretation, no text or letters.`;
+    if (isComic || isAdult) {
+      // Adult/comic content - consistent comic book style
+      fullPrompt = `${COMIC_STYLE_PREFIX}. Scene: ${sanitizedPrompt}. No text, no speech bubbles, no captions, no letters.`;
     } else {
-      // Children's book style prompt
-      fullPrompt = styleReference
-        ? `Children's book illustration style. ${safeStyle}. Scene: ${rawPrompt}. Colorful, warm, friendly, whimsical, no text or letters.`
-        : `Children's book illustration: ${rawPrompt}. Colorful, friendly, warm, whimsical style, suitable for ages 5-10. No text or letters.`;
+      // Children's content - still comic style but softer
+      fullPrompt = `${COMIC_STYLE_PREFIX}, softer colors, friendly character designs, whimsical atmosphere. Scene: ${rawPrompt}. No text, no speech bubbles, no captions, no letters.`;
     }
 
     console.log("Generating image with Leonardo AI, config:", {
