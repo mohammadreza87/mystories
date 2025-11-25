@@ -70,6 +70,9 @@ UPDATE stories SET is_user_generated = false WHERE is_user_generated IS NULL;
 DROP POLICY IF EXISTS "Anyone can view stories" ON stories;
 DROP POLICY IF EXISTS "Users can create stories" ON stories;
 DROP POLICY IF EXISTS "Users can update their own stories" ON stories;
+DROP POLICY IF EXISTS "Users can delete their own stories" ON stories;
+DROP POLICY IF EXISTS "Users can view public stories" ON stories;
+DROP POLICY IF EXISTS "Users can create their own stories" ON stories;
 
 -- Create new RLS policies for stories
 CREATE POLICY "Users can view public stories"
