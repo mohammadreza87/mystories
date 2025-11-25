@@ -613,13 +613,19 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
         console.log('No cached audio, generating new audio');
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
+        // Get current session for auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error('Not authenticated');
+        }
+
         const response = await fetch(
           `${supabaseUrl}/functions/v1/text-to-speech`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Authorization': `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({
               text,

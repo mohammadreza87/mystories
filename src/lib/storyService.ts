@@ -377,9 +377,15 @@ export async function startStoryGeneration(storyId: string, userId: string): Pro
 
   if (error) throw error;
 
+  // Get current session for auth token
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('Not authenticated');
+  }
+
   const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-story-queue`;
   const headers = {
-    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    'Authorization': `Bearer ${session.access_token}`,
     'Content-Type': 'application/json',
   };
 
