@@ -11,6 +11,7 @@ interface ImageRequest {
   prompt: string;
   size?: string;
   styleReference?: string;
+  isAdultComic?: boolean;
 }
 
 Deno.serve(async (req: Request) => {
@@ -25,7 +26,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     console.log("Received request body:", body);
 
-    const { prompt, styleReference }: ImageRequest = body;
+    const { prompt, styleReference, isAdultComic }: ImageRequest = body;
 
     if (!prompt) {
       console.error("No prompt provided in request");
@@ -49,11 +50,31 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const safeStyle = (styleReference || "").slice(0, 400);
-    const safePrompt = (prompt || "").slice(0, 400);
-    const fullPrompt = styleReference
-      ? `Children's book illustration. Keep characters identical to: ${safeStyle}. Scene: ${safePrompt}. Stay on the same palette and art style. No text or letters. Bright, gentle, age 5-10.`
-      : `Children's book illustration: ${safePrompt}. Colorful, friendly, age 5-10. No text or letters.`;
+    // Detect if this is a comic/graphic novel request based on style reference
+    const isComic = isAdultComic || (styleReference && (
+      styleReference.toLowerCase().includes('comic') ||
+      styleReference.toLowerCase().includes('graphic novel') ||
+      styleReference.toLowerCase().includes('manga') ||
+      styleReference.toLowerCase().includes('noir') ||
+      styleReference.toLowerCase().includes('cyberpunk')
+    ));
+
+    const safeStyle = (styleReference || "").slice(0, 600);
+    const safePrompt = (prompt || "").slice(0, 600);
+
+    let fullPrompt: string;
+
+    if (isComic) {
+      // Adult comic book style prompt
+      fullPrompt = styleReference
+        ? `${safeStyle} ${safePrompt} Professional comic book art, cinematic composition, dramatic lighting, no text or speech bubbles.`
+        : `${safePrompt} Professional comic book panel, graphic novel style, cinematic composition, dramatic lighting, no text or speech bubbles.`;
+    } else {
+      // Children's book style prompt (original behavior)
+      fullPrompt = styleReference
+        ? `Children's book illustration. Keep characters identical to: ${safeStyle}. Scene: ${safePrompt}. Stay on the same palette and art style. No text or letters. Bright, gentle, age 5-10.`
+        : `Children's book illustration: ${safePrompt}. Colorful, friendly, age 5-10. No text or letters.`;
+    }
 
     console.log("Generating image with prompt length:", fullPrompt.length);
 

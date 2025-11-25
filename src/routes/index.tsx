@@ -43,6 +43,9 @@ const Quests = lazy(() =>
 const Auth = lazy(() =>
   import('../components/Auth').then((m) => ({ default: m.Auth }))
 );
+const ComicCreator = lazy(() =>
+  import('../components/ComicCreator').then((m) => ({ default: m.ComicCreator }))
+);
 
 /**
  * Route path constants for type-safe navigation.
@@ -52,6 +55,7 @@ export const ROUTES = {
   STORY_DETAIL: '/story/:storyId',
   STORY_READ: '/story/:storyId/read',
   CREATE: '/create',
+  CREATE_COMIC: '/create/comic',
   PROFILE: '/profile',
   USER_PROFILE: '/user/:userId',
   SUBSCRIPTION: '/subscription',
@@ -135,6 +139,22 @@ function StoryCreatorPage() {
       <StoryCreator
         userId={user.id}
         onStoryCreated={(storyId) => navigate(buildRoute.storyDetail(storyId))}
+      />
+    </Suspense>
+  );
+}
+
+function ComicCreatorPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  if (!user) return <Navigate to="/auth/login" state={{ from: '/create/comic' }} replace />;
+
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <ComicCreator
+        userId={user.id}
+        onStoryCreated={(storyId) => navigate(buildRoute.storyRead(storyId))}
       />
     </Suspense>
   );
@@ -267,6 +287,10 @@ export const router = createBrowserRouter([
       {
         path: 'create',
         element: <StoryCreatorPage />,
+      },
+      {
+        path: 'create/comic',
+        element: <ComicCreatorPage />,
       },
       {
         path: 'profile',
