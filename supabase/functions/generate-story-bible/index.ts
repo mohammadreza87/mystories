@@ -2,7 +2,7 @@
  * Generate Story Bible Edge Function
  *
  * Creates a comprehensive story bible for adult comic book stories.
- * Uses OpenAI GPT-4 for high-quality, consistent character and world building.
+ * Uses DeepSeek for high-quality, consistent character and world building.
  */
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
@@ -253,35 +253,34 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Get OpenAI API key
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
-      return errors.internal('OpenAI API key not configured');
+    // Get DeepSeek API key
+    const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
+    if (!deepseekApiKey) {
+      return errors.internal('DeepSeek API key not configured');
     }
 
-    // Generate story bible with OpenAI GPT-4
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Generate story bible with DeepSeek
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${deepseekApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4-turbo-preview',
+        model: 'deepseek-chat',
         messages: [
           { role: 'system', content: BIBLE_SYSTEM_PROMPT },
           { role: 'user', content: buildBibleUserPrompt(request) },
         ],
         temperature: 0.7,
-        max_tokens: 2000,
-        response_format: { type: 'json_object' },
+        max_tokens: 2500,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API error:', errorText);
-      return errors.externalApi('OpenAI', errorText);
+      console.error('DeepSeek API error:', errorText);
+      return errors.externalApi('DeepSeek', errorText);
     }
 
     const data = await response.json();
