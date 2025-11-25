@@ -44,7 +44,7 @@ Deno.serve(async (req: Request) => {
 
     const now = new Date().toISOString();
     await supabase
-      .from("profiles")
+      .from("user_profiles")
       .update({
         last_login_at: now,
         last_active_at: now,

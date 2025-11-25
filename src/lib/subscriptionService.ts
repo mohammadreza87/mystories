@@ -29,7 +29,7 @@ export const STRIPE_PRICES = {
 
 export async function getUserSubscription(userId: string): Promise<UserSubscription | null> {
   const { data, error } = await supabase
-    .from('profiles')
+    .from('user_profiles')
     .select('subscription_tier, subscription_status, is_grandfathered, stories_generated_today, total_stories_generated, last_generation_date, stripe_customer_id, total_points, reading_points, creating_points')
     .eq('id', userId)
     .maybeSingle();
