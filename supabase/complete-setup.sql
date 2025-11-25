@@ -266,56 +266,5 @@ VALUES
   ('Explorer', 'Try 3 different genres', 'explore_genres', 3, 25, false)
 ON CONFLICT DO NOTHING;
 
--- Create a demo story
-INSERT INTO public.stories (
-  user_id,
-  created_by,
-  title,
-  description,
-  content,
-  genre,
-  age_range,
-  is_public,
-  is_published
-) VALUES (
-  '00000000-0000-0000-0000-000000000001',
-  '00000000-0000-0000-0000-000000000001',
-  'Welcome to MyStories',
-  'An interactive demo story to get you started',
-  '{
-    "nodes": {
-      "start": {
-        "id": "start",
-        "text": "Welcome to MyStories! This is a demo story to show how interactive stories work.",
-        "choices": [
-          {"text": "Learn more", "nextNode": "learn"},
-          {"text": "Start creating", "nextNode": "create"}
-        ]
-      },
-      "learn": {
-        "id": "learn",
-        "text": "MyStories lets you create branching narratives where readers choose their own path.",
-        "choices": [
-          {"text": "Continue", "nextNode": "end"}
-        ]
-      },
-      "create": {
-        "id": "create",
-        "text": "Sign up to start creating your own interactive stories!",
-        "choices": [
-          {"text": "Continue", "nextNode": "end"}
-        ]
-      },
-      "end": {
-        "id": "end",
-        "text": "Thanks for reading! Now explore other stories or create your own.",
-        "choices": []
-      }
-    },
-    "startNode": "start"
-  }'::jsonb,
-  'Tutorial',
-  'All Ages',
-  true,
-  true
-) ON CONFLICT DO NOTHING;
+-- Demo story will be created after first user signs up
+-- No demo data needed for initial setup
