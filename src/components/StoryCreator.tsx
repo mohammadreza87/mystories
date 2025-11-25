@@ -20,14 +20,24 @@ const audienceSuggestions: Record<TargetAudience, string[]> = {
     'A young wizard learns to control the weather',
     'A magical library where books come alive at night',
     'A detective cat solves mysteries in the city',
-    'A time-traveling adventure to meet dinosaurs'
+    'A time-traveling adventure to meet dinosaurs',
+    'A friendly robot learns what it means to be human',
+    'A princess who wants to become a scientist',
+    'A talking animal school where students learn magic',
+    'A young chef who can taste emotions in food',
+    'A garden where the flowers can sing and dance'
   ],
   young_adult: [
     'A teenager discovers they can see glimpses of the future',
     'A group of friends uncover a conspiracy at their school',
     'A young athlete must choose between fame and friendship',
     'A hacker accidentally exposes a government secret',
-    'Two rival students are forced to work together on a dangerous mission'
+    'Two rival students are forced to work together on a dangerous mission',
+    'A social media influencer discovers their followers are disappearing',
+    'A band of misfits must save their town from a supernatural threat',
+    'A scholarship student at an elite academy uncovers dark secrets',
+    'First contact with aliens - but only teenagers can communicate',
+    'A gaming tournament with real-world consequences'
   ],
   adult: [
     'What if Hitler had won World War 2?',
@@ -35,9 +45,23 @@ const audienceSuggestions: Record<TargetAudience, string[]> = {
     'A Cold War spy must choose between loyalty and love',
     'The rise and fall of a tech empire through moral dilemmas',
     'Ancient Rome: Play as Julius Caesar at critical moments',
-    'The Cuban Missile Crisis from Kennedy\'s perspective'
+    'The Cuban Missile Crisis from Kennedy\'s perspective',
+    'What if the Soviet Union won the Space Race?',
+    'A detective in 1920s Chicago during Prohibition',
+    'The fall of Constantinople - defend or flee?',
+    'Silicon Valley startup: ethics vs profit',
+    'World War 1 trenches: survive and lead',
+    'Renaissance Florence: Medici family intrigue',
+    'What if JFK survived the assassination?',
+    'Viking expedition to unknown lands',
+    'The French Revolution from Robespierre\'s view'
   ]
 };
+
+function getRandomSuggestions(suggestions: string[], count: number): string[] {
+  const shuffled = [...suggestions].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
 
 const audienceLabels: Record<TargetAudience, { label: string; description: string; badge: string }> = {
   children: {
@@ -67,10 +91,16 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
   const [usage, setUsage] = useState<SubscriptionUsage | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [targetAudience, setTargetAudience] = useState<TargetAudience>('adult');
+  const [displayedSuggestions, setDisplayedSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
     loadUsage();
   }, [userId]);
+
+  // Update suggestions when audience changes
+  useEffect(() => {
+    setDisplayedSuggestions(getRandomSuggestions(audienceSuggestions[targetAudience], 2));
+  }, [targetAudience]);
 
   const loadUsage = async () => {
     const data = await getSubscriptionUsage(userId);
@@ -270,7 +300,9 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
     }
   };
 
-  const suggestions = audienceSuggestions[targetAudience];
+  const refreshSuggestions = () => {
+    setDisplayedSuggestions(getRandomSuggestions(audienceSuggestions[targetAudience], 2));
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 pb-20 flex items-center justify-center">
@@ -335,16 +367,28 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
           />
 
           <div className="mt-4">
-            <p className="text-xs font-semibold text-gray-500 mb-2">
-              Need inspiration? Try these:
-            </p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-gray-500">
+                Need inspiration? Try these:
+              </p>
+              <button
+                onClick={refreshSuggestions}
+                disabled={isGenerating}
+                className="text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50 flex items-center gap-1"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                More ideas
+              </button>
+            </div>
             <div className="flex flex-wrap gap-2">
-              {suggestions.map((suggestion, idx) => (
+              {displayedSuggestions.map((suggestion, idx) => (
                 <button
                   key={idx}
                   onClick={() => setPrompt(suggestion)}
                   disabled={isGenerating}
-                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs rounded-xl transition-colors disabled:opacity-50"
+                  className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm rounded-xl transition-colors disabled:opacity-50 text-left"
                 >
                   {suggestion}
                 </button>
