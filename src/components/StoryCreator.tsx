@@ -231,6 +231,8 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
           language: generatedData.language || 'en',
           cover_image_url: null,
           target_audience: targetAudience,
+          art_style: artStyle,
+          image_prompt: artStyle, // store chosen style as prompt hint for downstream
         })
         .select()
         .single();

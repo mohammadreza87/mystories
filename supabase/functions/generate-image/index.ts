@@ -22,6 +22,8 @@ interface ImageRequest {
   targetAudience?: 'children' | 'young_adult' | 'adult';
   artStyle?: 'cartoon' | 'comic' | 'realistic';
   modelId?: string;
+  useDeepseekPrompt?: boolean;
+  storyTitle?: string;
 }
 
 // Leonardo AI Model IDs
@@ -110,6 +112,7 @@ const ART_STYLE_CONFIG: Record<string, { modelId: string; styleUUID: string; con
 };
 
 const LEONARDO_API_BASE = "https://cloud.leonardo.ai/api/rest/v1";
+const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
 
 interface GenerationConfig {
   modelId: string;
@@ -377,6 +380,58 @@ function buildSafeImagePrompt(originalPrompt: string, isAdult: boolean): string 
   return safePrompt;
 }
 
+async function buildDeepseekPrompt(
+  basePrompt: string,
+  artStyle: string | undefined,
+  storyTitle: string | undefined
+): Promise<string | null> {
+  const apiKey = Deno.env.get("DEEPSEEK_API_KEY");
+  if (!apiKey) return null;
+
+  const model = Deno.env.get("DEEPSEEK_MODEL") || "deepseek-chat";
+
+  const system = [
+    "You are a world-class prompt writer for visual generative models.",
+    "Write one concise, vivid scene description (max 120 words) for an illustration.",
+    "Do not include camera words, ratios, or style tokens; keep it language-only.",
+    "Avoid text overlays, speech bubbles, typography.",
+    "Keep it safe-for-work and artistically evocative."
+  ].join(" ");
+
+  const user = [
+    storyTitle ? `Story title: ${storyTitle}.` : "",
+    `Scene: ${basePrompt}.`,
+    artStyle ? `Visual style: ${artStyle}.` : "",
+    "Return only the scene description."
+  ].join(" ");
+
+  const response = await fetch(DEEPSEEK_API_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      temperature: 0.6,
+      max_tokens: 180,
+    }),
+  });
+
+  if (!response.ok) {
+    console.error("Deepseek prompt error:", await response.text());
+    return null;
+  }
+
+  const data = await response.json();
+  const content = data?.choices?.[0]?.message?.content?.trim();
+  return content || null;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -402,7 +457,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     console.log("Received request body:", body);
 
-    const { prompt, styleReference, isAdultComic, isAdultContent, targetAudience, artStyle, modelId }: ImageRequest = body;
+    const { prompt, styleReference, isAdultComic, isAdultContent, targetAudience, artStyle, modelId, useDeepseekPrompt, storyTitle }: ImageRequest = body;
 
     // Determine if this is adult content that needs sanitization
     const isAdult = isAdultContent || isAdultComic || targetAudience === 'adult' || targetAudience === 'young_adult';
@@ -427,6 +482,19 @@ Deno.serve(async (req: Request) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
+    }
+
+    // If requested and configured, enhance prompt with Deepseek for a richer scene description
+    let enhancedPrompt: string | null = null;
+    if (useDeepseekPrompt) {
+      try {
+        enhancedPrompt = await buildDeepseekPrompt(prompt, artStyle, storyTitle);
+        if (enhancedPrompt) {
+          console.log("Deepseek enhanced prompt length:", enhancedPrompt.length);
+        }
+      } catch (err) {
+        console.error("Deepseek prompt generation failed:", err);
+      }
     }
 
     // Detect if this is a comic/graphic novel request
@@ -487,7 +555,7 @@ Deno.serve(async (req: Request) => {
 
     // Build the prompt with sanitization for adult content
     const safeStyle = (styleReference || "").slice(0, 800);
-    const rawPrompt = (prompt || "").slice(0, 800);
+    const rawPrompt = (enhancedPrompt || prompt || "").slice(0, 800);
 
     // Apply sanitization for adult content to avoid content moderation issues
     const sanitizedPrompt = isAdult ? buildSafeImagePrompt(rawPrompt, true) : rawPrompt;

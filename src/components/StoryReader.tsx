@@ -76,6 +76,10 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
   const currentChapterIdRef = useRef<string | null>(null);
   const hasUserInteractedRef = useRef<boolean>(false);
   const isStoryOwner = story?.created_by && userId ? story.created_by === userId : false;
+  const getArtStyleForStory = () => {
+    if (story?.art_style) return story.art_style as ArtStyle;
+    return getArtStyleFromAudience(story?.target_audience);
+  };
   const seedChapterVideoFromNode = (node: StoryNode) => {
     if (node.video_url) {
       setChapterVideos((prev) => ({
@@ -291,7 +295,10 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
           body: JSON.stringify({
             prompt,
             styleReference: imageStyleReference,
-            targetAudience: story?.target_audience || 'children'
+            targetAudience: story?.target_audience || 'children',
+            artStyle: getArtStyleForStory(),
+            useDeepseekPrompt: true,
+            storyTitle,
           }),
         }
       );
