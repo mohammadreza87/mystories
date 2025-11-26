@@ -163,7 +163,7 @@ export interface Database {
         };
         Update: Partial<Database['public']['Tables']['user_story_progress']['Insert']>;
       };
-      profiles: {
+      user_profiles: {
         Row: {
           id: string;
           username: string | null;
@@ -218,7 +218,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
-        Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
+        Update: Partial<Database['public']['Tables']['user_profiles']['Insert']>;
       };
       user_quests: {
         Row: {
@@ -395,7 +395,7 @@ export type Story = Tables<'stories'>;
 export type StoryNode = Tables<'story_nodes'>;
 export type StoryChoice = Tables<'story_choices'>;
 export type StoryReaction = Tables<'story_reactions'>;
-export type UserProfile = Tables<'profiles'>;
+export type UserProfile = Tables<'user_profiles'>;
 export type UserQuest = Tables<'user_quests'>;
 export type UserStreak = Tables<'user_streaks'>;
 export type UserProgress = Tables<'user_story_progress'>;

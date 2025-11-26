@@ -39,7 +39,7 @@ export function ProfileEdit({ onClose, onSave }: ProfileEditProps) {
 
     try {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('user_profiles')
         .select('username, display_name, bio, avatar_url, is_profile_public')
         .eq('id', user.id)
         .maybeSingle();
@@ -138,14 +138,14 @@ export function ProfileEdit({ onClose, onSave }: ProfileEditProps) {
       };
 
       const { data: existing } = await supabase
-        .from('profiles')
+        .from('user_profiles')
         .select('id')
         .eq('id', user.id)
         .maybeSingle();
 
       if (existing) {
         const { error } = await supabase
-          .from('profiles')
+          .from('user_profiles')
           .update(profileData)
           .eq('id', user.id);
 
@@ -158,7 +158,7 @@ export function ProfileEdit({ onClose, onSave }: ProfileEditProps) {
         }
       } else {
         const { error } = await supabase
-          .from('profiles')
+          .from('user_profiles')
           .insert({ id: user.id, ...profileData });
 
         if (error) {
