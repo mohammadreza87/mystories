@@ -274,7 +274,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
       }
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const prompt = `${storyTitle}: ${nodeContent.substring(0, 200)}`;
+      const prompt = `${storyTitle}: ${nodeContent.substring(0, 400)}`;
 
       console.log('Generating image with prompt:', prompt);
 
@@ -297,6 +297,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
             styleReference: imageStyleReference,
             targetAudience: story?.target_audience || 'children',
             artStyle: getArtStyleForStory(),
+            storyText: story?.story_context || nodeContent,
             useDeepseekPrompt: true,
             storyTitle,
           }),

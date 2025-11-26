@@ -24,6 +24,7 @@ interface ImageRequest {
   modelId?: string;
   useDeepseekPrompt?: boolean;
   storyTitle?: string;
+  storyText?: string;
 }
 
 // Leonardo AI Model IDs
@@ -383,7 +384,8 @@ function buildSafeImagePrompt(originalPrompt: string, isAdult: boolean): string 
 async function buildDeepseekPrompt(
   basePrompt: string,
   artStyle: string | undefined,
-  storyTitle: string | undefined
+  storyTitle: string | undefined,
+  storyText: string | undefined
 ): Promise<string | null> {
   const apiKey = Deno.env.get("DEEPSEEK_API_KEY");
   if (!apiKey) return null;
@@ -400,8 +402,9 @@ async function buildDeepseekPrompt(
 
   const user = [
     storyTitle ? `Story title: ${storyTitle}.` : "",
+    storyText ? `Story context: ${storyText.slice(0, 600)}.` : "",
     `Scene: ${basePrompt}.`,
-    artStyle ? `Visual style: ${artStyle}.` : "",
+    artStyle ? `Visual style (must be applied): ${artStyle}.` : "",
     "Return only the scene description."
   ].join(" ");
 
@@ -457,7 +460,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     console.log("Received request body:", body);
 
-    const { prompt, styleReference, isAdultComic, isAdultContent, targetAudience, artStyle, modelId, useDeepseekPrompt, storyTitle }: ImageRequest = body;
+    const { prompt, styleReference, isAdultComic, isAdultContent, targetAudience, artStyle, modelId, useDeepseekPrompt, storyTitle, storyText }: ImageRequest = body;
 
     // Determine if this is adult content that needs sanitization
     const isAdult = isAdultContent || isAdultComic || targetAudience === 'adult' || targetAudience === 'young_adult';
@@ -488,7 +491,7 @@ Deno.serve(async (req: Request) => {
     let enhancedPrompt: string | null = null;
     if (useDeepseekPrompt) {
       try {
-        enhancedPrompt = await buildDeepseekPrompt(prompt, artStyle, storyTitle);
+        enhancedPrompt = await buildDeepseekPrompt(prompt, artStyle, storyTitle, storyText);
         if (enhancedPrompt) {
           console.log("Deepseek enhanced prompt length:", enhancedPrompt.length);
         }

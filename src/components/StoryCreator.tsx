@@ -219,7 +219,7 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
       let storyInsertError: any = null;
       let story = null as Awaited<ReturnType<typeof supabase.from>>['data'] extends (infer R)[] ? R : never;
 
-      const insertPayload = {
+      const insertPayload: Record<string, unknown> = {
         title: generatedData.title,
         description: generatedData.description,
         age_range: generatedData.ageRange || audienceLabels[targetAudience].badge,
@@ -247,9 +247,10 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
         story = storyWithStyle;
       } else {
         storyInsertError = storyError;
-        // Retry without art_style if the column is missing (migration not applied yet)
+        // Retry removing columns that may not exist yet (art_style, image_prompt)
         if (storyError.code === 'PGRST204') {
-          const { art_style, ...fallbackPayload } = insertPayload;
+          const { art_style, image_prompt, ...fallbackPayload } = insertPayload;
+
           const { data: storyNoStyle, error: storyFallbackError } = await supabase
             .from('stories')
             .insert(fallbackPayload)
