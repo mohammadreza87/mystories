@@ -5,6 +5,7 @@ import type { UserProfile } from '../lib/types';
 import { useAuth } from '../lib/authContext';
 import { useToast } from './Toast';
 import { plans, formatPrice, BillingCycle, getPriceId } from '../stripe-config';
+import { SEO, generateSubscriptionSchema } from './SEO';
 
 interface SubscriptionProps {
   userId: string;
@@ -81,18 +82,29 @@ export function Subscription({ userId, onBack }: SubscriptionProps) {
     );
   }
 
+  const subscriptionSchema = generateSubscriptionSchema();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-20">
+      <SEO
+        title="Subscription Plans"
+        description="Upgrade to Next Tale Pro or Creator for unlimited story creation, priority processing, audio narration, and premium features. Plans starting at €9.99/month."
+        url="/subscription"
+        type="product"
+        keywords={['subscription', 'pricing', 'pro plan', 'premium features', 'unlimited stories']}
+        schema={subscriptionSchema}
+        noindex={true}
+      />
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="mb-6">
+        <nav className="mb-6" aria-label="Back navigation">
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5" aria-hidden="true" />
             <span className="font-medium">Back</span>
           </button>
-        </div>
+        </nav>
 
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl shadow-lg mb-4">

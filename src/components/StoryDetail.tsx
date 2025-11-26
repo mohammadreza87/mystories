@@ -10,6 +10,7 @@ import type { Story } from '../lib/types';
 import { useToast } from './Toast';
 import { useStoryReactions } from '../hooks/useStoryReactions';
 import { LoadingState } from '../shared/components/LoadingState';
+import { SEO, generateStorySchema, generateBreadcrumbSchema } from './SEO';
 
 interface StoryDetailProps {
   storyId: string;
@@ -120,16 +121,48 @@ export function StoryDetail({ storyId, userId, onBack, onStartStory }: StoryDeta
     );
   }
 
+  // Generate structured data for this story
+  const storySchema = generateStorySchema({
+    id: storyId,
+    title: story.title,
+    description: story.description,
+    cover_image_url: story.cover_image_url,
+    age_range: story.age_range,
+    estimated_duration: story.estimated_duration,
+    created_at: story.created_at,
+    creator: story.creator,
+    likes_count: likesCount,
+  });
+
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Home', url: '/' },
+    { name: 'Stories', url: '/' },
+    { name: story.title, url: `/story/${storyId}` },
+  ]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-20">
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        <button
-          onClick={onBack}
-          className="mb-6 flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Back</span>
-        </button>
+      <SEO
+        title={story.title}
+        description={story.description}
+        image={story.cover_image_url || undefined}
+        url={`/story/${storyId}`}
+        type="article"
+        publishedTime={story.created_at}
+        author={story.creator?.display_name || 'Anonymous'}
+        keywords={['interactive story', story.age_range, 'choose your own adventure']}
+        schema={[storySchema, breadcrumbSchema]}
+      />
+      <article className="max-w-4xl mx-auto px-4 py-6">
+        <nav aria-label="Back navigation">
+          <button
+            onClick={onBack}
+            className="mb-6 flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" aria-hidden="true" />
+            <span className="font-medium">Back</span>
+          </button>
+        </nav>
 
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
           {story.cover_image_url && (
@@ -229,12 +262,12 @@ export function StoryDetail({ storyId, userId, onBack, onStartStory }: StoryDeta
               onClick={onStartStory}
               className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-lg font-bold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-3"
             >
-              <Play className="w-6 h-6 fill-white" />
+              <Play className="w-6 h-6 fill-white" aria-hidden="true" />
               Start Adventure
             </button>
           </div>
         </div>
-      </div>
+      </article>
     </div>
   );
 }

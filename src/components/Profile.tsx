@@ -13,6 +13,7 @@ import { useShare } from '../hooks';
 import { LoadingState } from '../shared/components/LoadingState';
 import { ErrorState } from '../shared/components/ErrorState';
 import { formatDate } from '../shared/utils/formatters';
+import { SEO } from './SEO';
 
 interface ProfileProps {
   userId: string;
@@ -236,8 +237,14 @@ export function Profile({ userId, onSelectStory }: ProfileProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-20">
+      <SEO
+        title="My Profile"
+        description="View and manage your Next Tale profile. Track your story progress, achievements, subscriptions, and created stories."
+        url="/profile"
+        noindex={true}
+      />
       <div className="max-w-md mx-auto px-4 py-6">
-        <div className="bg-white rounded-3xl shadow-xl p-6 mb-6">
+        <section className="bg-white rounded-3xl shadow-xl p-6 mb-6" aria-label="Profile information">
           <div className="flex items-center space-x-4 mb-4">
             <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
               {profile?.avatar_url ? (
@@ -321,7 +328,7 @@ export function Profile({ userId, onSelectStory }: ProfileProps) {
               </button>
             </div>
           </div>
-        </div>
+        </section>
 
         {subscription && (
           <div className="bg-white rounded-3xl shadow-xl p-6 mb-6">

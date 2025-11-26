@@ -2,13 +2,164 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Next Tale - Interactive Story Platform</title>
-    <meta property="og:image" content="https://bolt.new/static/og_default.png">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="https://bolt.new/static/og_default.png">
-</head>
+
+    <!-- Primary Meta Tags -->
+    <title>Next Tale - AI-Powered Interactive Stories | Choose Your Own Adventure</title>
+    <meta name="title" content="Next Tale - AI-Powered Interactive Stories | Choose Your Own Adventure" />
+    <meta name="description" content="Create and explore AI-powered interactive stories. Choose your own adventure with Next Tale - the platform for immersive, personalized storytelling for kids, teens, and adults." />
+    <meta name="keywords" content="interactive stories, AI stories, choose your own adventure, storytelling platform, kids stories, teen fiction, interactive fiction, story generator, AI storytelling" />
+    <meta name="author" content="Next Tale" />
+    <meta name="robots" content="index, follow" />
+    <meta name="language" content="English" />
+    <link rel="canonical" href="https://nexttale.app/" />
+
+    <!-- Favicon & Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#3B82F6" />
+    <meta name="msapplication-TileColor" content="#3B82F6" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://nexttale.app/" />
+    <meta property="og:title" content="Next Tale - AI-Powered Interactive Stories" />
+    <meta property="og:description" content="Create and explore AI-powered interactive stories. Choose your own adventure with immersive, personalized storytelling for all ages." />
+    <meta property="og:image" content="https://nexttale.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Next Tale - Interactive Story Platform" />
+    <meta property="og:site_name" content="Next Tale" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://nexttale.app/" />
+    <meta name="twitter:title" content="Next Tale - AI-Powered Interactive Stories" />
+    <meta name="twitter:description" content="Create and explore AI-powered interactive stories. Choose your own adventure with immersive, personalized storytelling for all ages." />
+    <meta name="twitter:image" content="https://nexttale.app/og-image.png" />
+    <meta name="twitter:image:alt" content="Next Tale - Interactive Story Platform" />
+
+    <!-- Performance Hints -->
+    <link rel="preconnect" href="https://yzifogzrytwpxnaylnga.supabase.co" crossorigin />
+    <link rel="dns-prefetch" href="https://yzifogzrytwpxnaylnga.supabase.co" />
+
+    <!-- Schema.org JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://nexttale.app/#organization",
+          "name": "Next Tale",
+          "url": "https://nexttale.app",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://nexttale.app/logo.png",
+            "width": 512,
+            "height": 512
+          },
+          "description": "Next Tale is an AI-powered interactive storytelling platform for creating and exploring choose-your-own-adventure stories.",
+          "foundingDate": "2024",
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer service",
+            "availableLanguage": ["English"]
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://nexttale.app/#website",
+          "url": "https://nexttale.app",
+          "name": "Next Tale",
+          "description": "AI-Powered Interactive Stories Platform",
+          "publisher": {
+            "@id": "https://nexttale.app/#organization"
+          },
+          "inLanguage": "en-US"
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://nexttale.app/#webapp",
+          "name": "Next Tale",
+          "url": "https://nexttale.app",
+          "description": "Create and explore AI-powered interactive stories with branching narratives, custom illustrations, and audio narration.",
+          "applicationCategory": "EntertainmentApplication",
+          "operatingSystem": "Web Browser",
+          "browserRequirements": "Requires JavaScript",
+          "offers": {
+            "@type": "AggregateOffer",
+            "lowPrice": "0",
+            "highPrice": "19.99",
+            "priceCurrency": "EUR",
+            "offerCount": "3"
+          },
+          "featureList": [
+            "AI-powered story generation",
+            "Choose your own adventure branching paths",
+            "Multiple age ranges (children, teens, adults)",
+            "AI-generated cover art and illustrations",
+            "Text-to-speech audio narration",
+            "Social sharing and creator following",
+            "Story reactions and engagement",
+            "Progress tracking and achievements"
+          ],
+          "screenshot": "https://nexttale.app/screenshot.png"
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://nexttale.app/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What is Next Tale?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Next Tale is an AI-powered interactive storytelling platform where you can create and explore choose-your-own-adventure stories. Our AI generates personalized narratives based on your choices, with custom illustrations and optional audio narration."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How does the AI story generation work?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "When you create a story, you provide a title, description, and target age range. Our AI then generates a complete interactive story with multiple branching paths, cover art, and chapter illustrations. Each story has between 5-20 chapters depending on your choices."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is Next Tale free to use?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes! Next Tale offers a free tier that allows you to create 1 story per day and read unlimited stories. Premium plans (Pro and Creator) offer unlimited story creation, faster generation, audio narration, and additional features starting at €9.99/month."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What age groups is Next Tale suitable for?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Next Tale supports multiple age ranges: Children (5-8), Tweens (9-12), Teens (13-17), and Adults (18+). Each story is generated with age-appropriate content, themes, and vocabulary."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I share my stories with others?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Absolutely! All public stories can be shared via a unique link. You can also set stories to private if you want to keep them personal. Readers can like stories and follow their favorite creators."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+  </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
