@@ -132,7 +132,7 @@ function StoryCreatorPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  if (!user) return <Navigate to="/auth/login" state={{ from: '/create' }} replace />;
+  if (!user) return <Navigate to="/auth/signup" state={{ from: '/create' }} replace />;
 
   return (
     <Suspense fallback={<PageLoader />}>
@@ -148,7 +148,7 @@ function ComicCreatorPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  if (!user) return <Navigate to="/auth/login" state={{ from: '/create/comic' }} replace />;
+  if (!user) return <Navigate to="/auth/signup" state={{ from: '/create/comic' }} replace />;
 
   return (
     <Suspense fallback={<PageLoader />}>

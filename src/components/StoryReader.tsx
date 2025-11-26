@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Play, Pause, RotateCcw, Sparkles, Loader, User, ThumbsUp, ThumbsDown, Share2 } from 'lucide-react';
 import { getStoryNode, getNodeChoices, saveProgress, updateNodeImage, updateNodeAudio, createStoryNode, createStoryChoice, getStory, getStoryGenerationStatus, getUserReaction, addReaction, updateReaction, removeReaction } from '../lib/storyService';
 import { trackChapterRead, trackStoryCompletion } from '../lib/pointsService';
@@ -25,6 +26,7 @@ interface StoryChapter {
 export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
   const { showToast } = useToast();
   const safeTimeout = useTimeout();
+  const navigate = useNavigate();
   const [chapters, setChapters] = useState<StoryChapter[]>([]);
   const [pathTaken, setPathTaken] = useState<string[]>(['start']);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -349,6 +351,12 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
     chapterIndex: number,
     choice: StoryChoice & { to_node: StoryNode }
   ) => {
+    if (!userId) {
+      showToast('Sign up or log in to continue the story', 'warning');
+      navigate('/auth/signup', { state: { from: `/story/${storyId}/read` } });
+      return;
+    }
+
     const updatedChapters = [...chapters];
     updatedChapters[chapterIndex].selectedChoiceId = choice.id;
     setChapters(updatedChapters);
