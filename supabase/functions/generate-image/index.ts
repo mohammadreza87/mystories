@@ -385,7 +385,9 @@ async function buildDeepseekPrompt(
   basePrompt: string,
   artStyle: string | undefined,
   storyTitle: string | undefined,
-  storyText: string | undefined
+  storyText: string | undefined,
+  targetAudience: string | undefined,
+  styleReference: string | undefined
 ): Promise<string | null> {
   const apiKey = Deno.env.get("DEEPSEEK_API_KEY");
   if (!apiKey) return null;
@@ -394,19 +396,24 @@ async function buildDeepseekPrompt(
 
   const system = [
     "You are a world-class prompt writer for visual generative models.",
-    "Write one concise, vivid scene description (max 120 words) for an illustration.",
-    "Do not include camera words, ratios, or style tokens; keep it language-only.",
-    "Avoid text overlays, speech bubbles, typography.",
-    "Keep it safe-for-work and artistically evocative."
+    "Return a single vivid scene prompt (<=120 words) ready for an image model.",
+    "Must enforce the given art style. Keep it one frame, not multiple panels.",
+    "No camera jargon, no aspect ratios, no text overlays, no speech bubbles, no watermarks.",
+    "Focus on setting, characters, actions, mood, lighting, color palette, and composition.",
+    "Keep it safe-for-work and descriptive, not prescriptive."
   ].join(" ");
 
   const user = [
-    storyTitle ? `Story title: ${storyTitle}.` : "",
-    storyText ? `Story context: ${storyText.slice(0, 600)}.` : "",
-    `Scene: ${basePrompt}.`,
-    artStyle ? `Visual style (must be applied): ${artStyle}.` : "",
-    "Return only the scene description."
-  ].join(" ");
+    storyTitle ? `Title: ${storyTitle}.` : "",
+    targetAudience ? `Audience: ${targetAudience}.` : "",
+    artStyle ? `Art style: ${artStyle} (must be applied).` : "",
+    styleReference ? `Style reference/hints: ${styleReference.slice(0, 200)}.` : "",
+    storyText ? `Story context: ${storyText.slice(0, 800)}.` : "",
+    `Current scene to render: ${basePrompt}.`,
+    "Include: setting + time, key characters with visual traits and actions, mood/tone, lighting/color palette, composition/perspective.",
+    "Constraints: one frame, no text, no speech bubbles, no aspect ratios, no camera jargon.",
+    "Return only the final prompt."
+  ].filter(Boolean).join(" ");
 
   const response = await fetch(DEEPSEEK_API_URL, {
     method: "POST",
@@ -491,7 +498,14 @@ Deno.serve(async (req: Request) => {
     let enhancedPrompt: string | null = null;
     if (useDeepseekPrompt) {
       try {
-        enhancedPrompt = await buildDeepseekPrompt(prompt, artStyle, storyTitle, storyText);
+        enhancedPrompt = await buildDeepseekPrompt(
+          prompt,
+          artStyle,
+          storyTitle,
+          storyText,
+          targetAudience,
+          styleReference
+        );
         if (enhancedPrompt) {
           console.log("Deepseek enhanced prompt length:", enhancedPrompt.length);
         }

@@ -71,6 +71,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [chapterVideos, setChapterVideos] = useState<Record<string, { url: string | null; generating: boolean; failed?: boolean }>>({});
   const videoGenerationAttemptedRef = useRef<Set<string>>(new Set());
+  const imageGenerationInProgressRef = useRef<Set<string>>(new Set());
   const latestChapterRef = useRef<HTMLDivElement | null>(null);
   const wordTimerRef = useRef<NodeJS.Timeout | null>(null);
   const currentChapterIdRef = useRef<string | null>(null);
@@ -266,7 +267,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
     return `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   };
 
-  const generateNodeImage = async (nodeContent: string, storyTitle: string): Promise<string | null> => {
+  const generateNodeImage = async (nodeId: string, nodeContent: string, storyTitle: string): Promise<string | null> => {
     try {
       if (!nodeContent || !storyTitle) {
         console.error('Missing content or title for image generation');
@@ -274,6 +275,8 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
       }
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      // Combine story context and node content for a richer Deepseek prompt
+      const storyTextForPrompt = [story?.story_context, nodeContent].filter(Boolean).join('\n').slice(0, 1200);
       const prompt = `${storyTitle}: ${nodeContent.substring(0, 400)}`;
 
       console.log('Generating image with prompt:', prompt);
@@ -297,7 +300,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
             styleReference: imageStyleReference,
             targetAudience: story?.target_audience || 'children',
             artStyle: getArtStyleForStory(),
-            storyText: story?.story_context || nodeContent,
+            storyText: storyTextForPrompt,
             useDeepseekPrompt: true,
             storyTitle,
           }),
@@ -463,18 +466,23 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
       if (!shouldUseCoverImage && !existingNodeImage && currentStory) {
         console.log('No cached image for start node, generating new image in background');
         // Fire and forget - don't await
-        generateNodeImage(node.content, currentStory.title).then(async (imageUrl) => {
-          if (imageUrl) {
-            await updateNodeImage(node.id, imageUrl, node.content.substring(0, 200));
-            setChapters(prev => prev.map(ch =>
-              ch.node.id === node.id
-                ? { ...ch, imageUrl }
-                : ch
-            ));
-          }
-        }).catch((err) => {
-          console.log('Image generation failed, continuing without image:', err);
-        });
+        if (!imageGenerationInProgressRef.current.has(node.id)) {
+          imageGenerationInProgressRef.current.add(node.id);
+          generateNodeImage(node.id, node.content, currentStory.title).then(async (imageUrl) => {
+            if (imageUrl) {
+              await updateNodeImage(node.id, imageUrl, node.content.substring(0, 200));
+              setChapters(prev => prev.map(ch =>
+                ch.node.id === node.id
+                  ? { ...ch, imageUrl }
+                  : ch
+              ));
+            }
+          }).catch((err) => {
+            console.log('Image generation failed, continuing without image:', err);
+          }).finally(() => {
+            imageGenerationInProgressRef.current.delete(node.id);
+          });
+        }
       }
 
       setLoading(false);
@@ -612,18 +620,23 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
 
         // Generate image in background without blocking (fire and forget)
         if (story) {
-          generateNodeImage(newNode.content, story.title).then(async (imageUrl) => {
-            if (imageUrl) {
-              await updateNodeImage(newNode.id, imageUrl, newNode.content.substring(0, 200));
-              setChapters(prev => prev.map(ch =>
-                ch.node.id === newNode.id
-                  ? { ...ch, imageUrl }
-                  : ch
-              ));
-            }
-          }).catch((err) => {
-            console.log('Image generation failed, continuing without image:', err);
-          });
+          if (!imageGenerationInProgressRef.current.has(newNode.id)) {
+            imageGenerationInProgressRef.current.add(newNode.id);
+            generateNodeImage(newNode.id, newNode.content, story.title).then(async (imageUrl) => {
+              if (imageUrl) {
+                await updateNodeImage(newNode.id, imageUrl, newNode.content.substring(0, 200));
+                setChapters(prev => prev.map(ch =>
+                  ch.node.id === newNode.id
+                    ? { ...ch, imageUrl }
+                    : ch
+                ));
+              }
+            }).catch((err) => {
+              console.log('Image generation failed, continuing without image:', err);
+            }).finally(() => {
+              imageGenerationInProgressRef.current.delete(newNode.id);
+            });
+          }
         }
       } catch (error) {
         console.error('Error generating next chapter:', error);
@@ -732,18 +745,23 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
       // Generate image in background without blocking (fire and forget)
       if (story && !choice.to_node.image_url) {
         console.log('No cached image, generating new image for node in background');
-        generateNodeImage(choice.to_node.content, story.title).then(async (imageUrl) => {
-          if (imageUrl) {
-            await updateNodeImage(choice.to_node.id, imageUrl, choice.to_node.content.substring(0, 200));
-            setChapters(prev => prev.map(ch =>
-              ch.node.id === choice.to_node.id
-                ? { ...ch, imageUrl }
-                : ch
-            ));
-          }
-        }).catch((err) => {
-          console.log('Image generation failed, continuing without image:', err);
-        });
+        if (!imageGenerationInProgressRef.current.has(choice.to_node.id)) {
+          imageGenerationInProgressRef.current.add(choice.to_node.id);
+          generateNodeImage(choice.to_node.id, choice.to_node.content, story.title).then(async (imageUrl) => {
+            if (imageUrl) {
+              await updateNodeImage(choice.to_node.id, imageUrl, choice.to_node.content.substring(0, 200));
+              setChapters(prev => prev.map(ch =>
+                ch.node.id === choice.to_node.id
+                  ? { ...ch, imageUrl }
+                  : ch
+              ));
+            }
+          }).catch((err) => {
+            console.log('Image generation failed, continuing without image:', err);
+          }).finally(() => {
+            imageGenerationInProgressRef.current.delete(choice.to_node.id);
+          });
+        }
       } else if (choice.to_node.image_url) {
         console.log('Using cached image from database');
       }
