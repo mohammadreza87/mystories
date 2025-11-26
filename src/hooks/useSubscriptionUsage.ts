@@ -8,7 +8,9 @@ interface UseSubscriptionUsageResult {
   error: Error | null;
   refresh: () => Promise<void>;
   canGenerate: boolean;
+  canComplete: boolean;
   remainingStories: number | 'unlimited';
+  features: SubscriptionUsage['features'] | null;
 }
 
 export function useSubscriptionUsage(userId: string | undefined): UseSubscriptionUsageResult {
@@ -30,6 +32,7 @@ export function useSubscriptionUsage(userId: string | undefined): UseSubscriptio
   };
 
   const canGenerate = usage?.canGenerate ?? false;
+  const canComplete = usage?.canComplete ?? false;
   const remainingStories = usage?.hasUnlimited
     ? 'unlimited'
     : Math.max(
@@ -44,6 +47,8 @@ export function useSubscriptionUsage(userId: string | undefined): UseSubscriptio
     error: error as Error | null,
     refresh,
     canGenerate,
+    canComplete,
     remainingStories,
+    features: usage?.features ?? null,
   };
 }

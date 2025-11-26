@@ -5,9 +5,10 @@ import { getStoryNode, getNodeChoices, saveProgress, updateNodeImage, updateNode
 import { trackChapterRead, trackStoryCompletion } from '../lib/pointsService';
 import { progressQuest } from '../lib/questsService';
 import { supabase } from '../lib/supabase';
+import { generateChapterVideo } from '../lib/videoService';
 import type { StoryNode, StoryChoice, Story, StoryReaction } from '../lib/types';
 import { useToast } from './Toast';
-import { useTimeout } from '../hooks';
+import { useTimeout, useSubscriptionUsage } from '../hooks';
 
 interface StoryReaderProps {
   storyId: string;
@@ -21,12 +22,15 @@ interface StoryChapter {
   selectedChoiceId?: string;
   imageUrl?: string | null;
   generatingImage?: boolean;
+  videoUrl?: string | null;
+  generatingVideo?: boolean;
 }
 
 export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
   const { showToast } = useToast();
   const safeTimeout = useTimeout();
   const navigate = useNavigate();
+  const { usage: subscriptionUsage } = useSubscriptionUsage(userId || undefined);
   const [chapters, setChapters] = useState<StoryChapter[]>([]);
   const [pathTaken, setPathTaken] = useState<string[]>(['start']);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -43,6 +47,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
   const [likesCount, setLikesCount] = useState(0);
   const [dislikesCount, setDislikesCount] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [chapterVideos, setChapterVideos] = useState<Record<string, { url: string | null; generating: boolean }>>({});
   const latestChapterRef = useRef<HTMLDivElement | null>(null);
   const wordTimerRef = useRef<NodeJS.Timeout | null>(null);
   const currentChapterIdRef = useRef<string | null>(null);
@@ -464,10 +469,10 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
           generatingImage: false // Show content immediately
         };
 
-        setChapters([...updatedChapters, newChapter]);
-        setIsGenerating(false);
+      setChapters([...updatedChapters, newChapter]);
+      setIsGenerating(false);
 
-        await trackChapterRead(userId, storyId, newNode.id, story.created_by || null);
+      await trackChapterRead(userId, storyId, newNode.id, story.created_by || null);
 
         if (generatedStory.isEnding) {
           await trackStoryCompletion(userId, storyId, story.created_by || null);
@@ -607,6 +612,11 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
   };
 
   const speakText = async (text: string, nodeId: string, audioData: string | null) => {
+    if (subscriptionUsage && !subscriptionUsage.features.audio) {
+      showToast('Audio narration is available on Pro and Max plans.', 'warning');
+      return;
+    }
+
     try {
       setError(null);
       setIsGenerating(true);
@@ -983,6 +993,49 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
                     <span className="text-blue-700 font-medium">Creating illustration...</span>
                   </div>
                 ) : null}
+
+                {subscriptionUsage?.features.video && (
+                  <div className="mb-6">
+                    {chapterVideos[chapter.node.id]?.url ? (
+                      <video
+                        controls
+                        className="w-full rounded-2xl shadow-lg"
+                        src={chapterVideos[chapter.node.id]?.url || undefined}
+                      />
+                    ) : (
+                      <button
+                        onClick={async () => {
+                          setChapterVideos((prev) => ({
+                            ...prev,
+                            [chapter.node.id]: { url: null, generating: true },
+                          }));
+                          try {
+                            const videoUrl = await generateChapterVideo({
+                              prompt: `${story?.title || 'Story'} - ${chapter.node.content.slice(0, 400)}`,
+                              durationSeconds: 8,
+                              aspectRatio: '16:9',
+                            });
+                            setChapterVideos((prev) => ({
+                              ...prev,
+                              [chapter.node.id]: { url: videoUrl, generating: false },
+                            }));
+                          } catch (err) {
+                            console.error('Video generation failed', err);
+                            showToast('Video generation failed. Please try again.', 'error');
+                            setChapterVideos((prev) => ({
+                              ...prev,
+                              [chapter.node.id]: { url: null, generating: false },
+                            }));
+                          }
+                        }}
+                        disabled={chapterVideos[chapter.node.id]?.generating}
+                        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold py-3 rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                      >
+                        {chapterVideos[chapter.node.id]?.generating ? 'Generating video...' : 'Generate video for this chapter'}
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 <div className="prose prose-lg max-w-none">
                   <p className="text-xl md:text-2xl leading-relaxed text-gray-800">

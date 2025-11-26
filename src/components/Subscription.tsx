@@ -238,15 +238,15 @@ export function Subscription({ userId, onBack }: SubscriptionProps) {
                           <Zap className="w-10 h-10 text-blue-500" />
                         )}
                       </div>
-                      <div className="text-4xl font-bold text-gray-900 mb-2">
-                        {formatPrice(price, 'usd')}
+                    <div className="text-4xl font-bold text-gray-900 mb-2">
+                        {formatPrice(price, 'eur')}
                         <span className="text-lg font-normal text-gray-600">
                           /{billingCycle === 'annual' ? 'year' : 'month'}
                         </span>
                       </div>
                       {billingCycle === 'annual' && (
                         <p className="text-sm text-green-600 font-medium mb-4">
-                          {formatPrice(plan.price.annual / 12, 'usd')}/mo billed annually
+                          {formatPrice(plan.price.annual / 12, 'eur')}/mo billed annually
                         </p>
                       )}
                       <ul className="space-y-2 mb-6">

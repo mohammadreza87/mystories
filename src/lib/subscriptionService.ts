@@ -15,13 +15,20 @@ export interface UserSubscription {
 }
 
 export interface SubscriptionUsage {
-  tier: 'free' | 'pro';
+  tier: 'free' | 'basic' | 'pro' | 'max';
   isPro: boolean;
   isGrandfathered: boolean;
   storiesGeneratedToday: number;
+  completionsToday: number;
   dailyLimit: number | null;
+  completionLimit: number | null;
   hasUnlimited: boolean;
   canGenerate: boolean;
+  canComplete: boolean;
+  features: {
+    audio: boolean;
+    video: boolean;
+  };
 }
 
 export const STRIPE_PRICES = {
@@ -51,33 +58,39 @@ export async function getUserSubscription(userId: string): Promise<UserSubscript
 export async function getSubscriptionUsage(userId: string): Promise<SubscriptionUsage> {
   const subscription = await getUserSubscription(userId);
 
-  if (!subscription) {
-    return {
-      tier: 'free',
-      isPro: false,
-      isGrandfathered: false,
-      storiesGeneratedToday: 0,
-      dailyLimit: config.limits.free.storiesPerDay,
-      hasUnlimited: false,
-      canGenerate: config.limits.free.storiesPerDay > 0,
-    };
-  }
+  const tierLimits = {
+    free: { storiesPerDay: 1, completionsPerDay: 1, audio: false, video: false },
+    basic: { storiesPerDay: 5, completionsPerDay: 5, audio: false, video: false },
+    pro: { storiesPerDay: 20, completionsPerDay: 20, audio: true, video: false },
+    max: { storiesPerDay: 40, completionsPerDay: 40, audio: true, video: true },
+  } as const;
 
-  const isPro = subscription.subscription_tier === 'pro';
-  const hasUnlimited = isPro || subscription.is_grandfathered;
+  const tier = (subscription?.subscription_tier as SubscriptionUsage['tier']) || 'free';
+  const limits = tierLimits[tier] || tierLimits.free;
+  const isPro = tier === 'pro' || tier === 'max';
+  const hasUnlimited = tier === 'pro' || tier === 'max' || subscription?.is_grandfathered;
   const today = new Date().toISOString().split('T')[0];
-  const isToday = subscription.last_generation_date === today;
-  const todayCount = isToday ? subscription.stories_generated_today : 0;
-  const dailyLimit = hasUnlimited ? null : config.limits.free.storiesPerDay;
+  const isToday = subscription?.last_generation_date === today;
+  const todayCount = isToday ? subscription?.stories_generated_today ?? 0 : 0;
+  const dailyLimit = hasUnlimited ? null : limits.storiesPerDay;
+  const completionLimit = hasUnlimited ? null : limits.completionsPerDay;
+  const completionsToday = todayCount > limits.completionsPerDay ? limits.completionsPerDay : todayCount; // fallback; real completion tracking should come from backend
 
   return {
-    tier: subscription.subscription_tier,
+    tier,
     isPro,
-    isGrandfathered: subscription.is_grandfathered,
+    isGrandfathered: subscription?.is_grandfathered ?? false,
     storiesGeneratedToday: todayCount,
+    completionsToday,
     dailyLimit,
+    completionLimit,
     hasUnlimited,
     canGenerate: hasUnlimited || todayCount < (dailyLimit ?? 0),
+    canComplete: hasUnlimited || completionsToday < (completionLimit ?? 0),
+    features: {
+      audio: limits.audio || hasUnlimited,
+      video: limits.video && (tier === 'max'),
+    },
   };
 }
 

@@ -110,7 +110,7 @@ export function SubscriptionPlans({ currentPlan, onSubscriptionChange }: Subscri
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
                 <p className="text-gray-600 mb-4">{plan.description}</p>
                 <div className="text-4xl font-bold text-gray-900 mb-2">
-                  {isFree ? '$0' : formatPrice(price, 'usd')}
+                  {isFree ? '€0' : formatPrice(price, 'eur')}
                   {!isFree && (
                     <span className="text-lg font-normal text-gray-600">
                       /{billingCycle === 'annual' ? 'year' : 'month'}
@@ -119,7 +119,7 @@ export function SubscriptionPlans({ currentPlan, onSubscriptionChange }: Subscri
                 </div>
                 {billingCycle === 'annual' && !isFree && (
                   <p className="text-green-600 font-medium">
-                    {formatPrice(plan.price.annual / 12, 'usd')}/mo billed annually
+                    {formatPrice(plan.price.annual / 12, 'eur')}/mo billed annually
                   </p>
                 )}
               </div>

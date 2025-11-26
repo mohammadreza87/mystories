@@ -133,14 +133,14 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                         {icon}
                         <h4 className="text-lg font-semibold text-gray-900">{plan.name}</h4>
                         <div className="text-3xl font-bold text-gray-900">
-                          {formatPrice(price, 'usd')}
+                          {formatPrice(price, 'eur')}
                           <span className="text-sm font-normal text-gray-600 ml-1">
                             /{billingCycle === 'annual' ? 'year' : 'month'}
                           </span>
                         </div>
                         {billingCycle === 'annual' && (
                           <div className="text-xs text-green-600 font-medium">
-                            {formatPrice(plan.price.annual / 12, 'usd')}/mo billed annually
+                            {formatPrice(plan.price.annual / 12, 'eur')}/mo billed annually
                           </div>
                         )}
                         <button

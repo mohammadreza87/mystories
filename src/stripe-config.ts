@@ -44,7 +44,7 @@ export const plans: PlanDefinition[] = [
     id: 'basic',
     name: 'Basic',
     description: 'For regular users and parents creating for kids',
-    price: { monthly: 9, annual: 90 },
+    price: { monthly: 9.99, annual: 99.99 },
     priceIds: {
       monthly: priceId('VITE_STRIPE_PRICE_BASIC_MONTHLY'),
       annual: priceId('VITE_STRIPE_PRICE_BASIC_ANNUAL'),
@@ -65,7 +65,7 @@ export const plans: PlanDefinition[] = [
     id: 'pro',
     name: 'Pro',
     description: 'For teachers, creators, and serious writers',
-    price: { monthly: 19, annual: 190 },
+    price: { monthly: 19.99, annual: 199.99 },
     priceIds: {
       monthly: priceId('VITE_STRIPE_PRICE_PRO_MONTHLY'),
       annual: priceId('VITE_STRIPE_PRICE_PRO_ANNUAL'),
@@ -87,7 +87,7 @@ export const plans: PlanDefinition[] = [
     id: 'max',
     name: 'Max',
     description: 'For professionals, agencies, and teams',
-    price: { monthly: 49, annual: 490 },
+    price: { monthly: 79.99, annual: 699.99 },
     priceIds: {
       monthly: priceId('VITE_STRIPE_PRICE_MAX_MONTHLY'),
       annual: priceId('VITE_STRIPE_PRICE_MAX_ANNUAL'),
