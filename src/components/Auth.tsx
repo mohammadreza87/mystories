@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Mail, Loader } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { AppleIcon, GoogleIcon } from './auth/SocialIcons';
+import { SEO } from './SEO';
 
 interface AuthProps {
   onAuthSuccess: () => void;
@@ -93,15 +94,24 @@ export function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md">
-        <div className="text-center mb-8">
+      <SEO
+        title={isSignUp ? 'Create Account' : 'Sign In'}
+        description={isSignUp
+          ? 'Create a free Next Tale account to start creating and exploring AI-powered interactive stories. Join thousands of storytellers today.'
+          : 'Sign in to your Next Tale account to continue your interactive storytelling journey. Access your stories, progress, and achievements.'
+        }
+        url={isSignUp ? '/auth/signup' : '/auth/login'}
+        noindex={true}
+      />
+      <main className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md">
+        <header className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
             Welcome to Next Tale
           </h1>
           <p className="text-gray-600">
             {isSignUp ? 'Create an account to start your YA journey' : 'Sign in to continue your story'}
           </p>
-        </div>
+        </header>
 
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
@@ -273,7 +283,7 @@ export function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps) {
             </div>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

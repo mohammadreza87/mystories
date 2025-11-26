@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Flame, Sparkles, CheckCircle2, Clock, PlusCircle, BookOpen } from 'lucide-react';
 import { getQuests, Quest } from '../lib/questsService';
+import { SEO } from './SEO';
 
 interface Quest {
   id: string;
@@ -105,14 +106,22 @@ export function Quests({ onBack }: QuestsProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 pb-20">
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <button
-          onClick={onBack}
-          className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Back</span>
-        </button>
+      <SEO
+        title="Daily Quests & Achievements"
+        description="Complete daily and weekly quests to earn points and maintain your reading streak. Track your progress and unlock achievements."
+        url="/quests"
+        noindex={true}
+      />
+      <main className="max-w-2xl mx-auto px-4 py-8">
+        <nav aria-label="Back navigation">
+          <button
+            onClick={onBack}
+            className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" aria-hidden="true" />
+            <span className="font-medium">Back</span>
+          </button>
+        </nav>
 
         <div className="bg-white rounded-3xl shadow-xl p-6 mb-6 flex items-center justify-between">
           <div className="space-y-2">
@@ -226,7 +235,7 @@ export function Quests({ onBack }: QuestsProps) {
             );
           })}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

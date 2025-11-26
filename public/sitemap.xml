@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+  <!-- Homepage -->
+  <url>
+    <loc>https://nexttale.app/</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Create Story Page -->
+  <url>
+    <loc>https://nexttale.app/create</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Create Comic Page -->
+  <url>
+    <loc>https://nexttale.app/create/comic</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!--
+    Note: Individual story pages (/story/:id) should be added dynamically.
+    Consider implementing a server-side sitemap generator that queries
+    your database for all public stories and generates URLs like:
+
+    <url>
+      <loc>https://nexttale.app/story/abc123</loc>
+      <lastmod>2025-01-15</lastmod>
+      <changefreq>monthly</changefreq>
+      <priority>0.7</priority>
+    </url>
+
+    For now, search engines will discover stories through internal links
+    on the homepage.
+  -->
+
+</urlset>

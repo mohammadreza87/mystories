@@ -6,6 +6,7 @@ import { getSubscriptionUsage, SubscriptionUsage } from '../lib/subscriptionServ
 import UsageBadge from './UsageBadge';
 import UpgradeModal from './UpgradeModal';
 import { progressQuest } from '../lib/questsService';
+import { SEO } from './SEO';
 
 interface StoryCreatorProps {
   userId: string;
@@ -311,11 +312,17 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 pb-20 flex items-center justify-center">
+      <SEO
+        title="Create Your Story"
+        description="Create your own AI-powered interactive story with Next Tale. Describe your adventure and let AI generate a personalized choose-your-own-adventure experience."
+        url="/create"
+        keywords={['create story', 'AI story generator', 'interactive fiction creator', 'write your own adventure']}
+      />
       <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
-      <div className="max-w-2xl w-full mx-auto px-4 py-8">
-        <div className="text-center mb-8">
+      <main className="max-w-2xl w-full mx-auto px-4 py-8">
+        <header className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-3xl shadow-lg mb-6">
-            <BookPlus className="w-12 h-12 text-white" />
+            <BookPlus className="w-12 h-12 text-white" aria-hidden="true" />
           </div>
           <h1 className="text-5xl font-bold text-gray-800 mb-3">
             Create Your Story
@@ -326,7 +333,7 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
           <div className="mt-6 flex justify-center">
             <UsageBadge onUpgradeClick={() => setShowUpgradeModal(true)} />
           </div>
-        </div>
+        </header>
 
         <div className="bg-white rounded-3xl shadow-xl p-6 mb-6">
           {/* Audience Selector */}
@@ -469,9 +476,9 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
           </button>
         </div>
 
-        <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-white">
+        <aside className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-white">
           <div className="flex items-start gap-3">
-            <Sparkles className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+            <Sparkles className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div className="text-sm text-gray-700 space-y-2">
               <p className="font-semibold">How it works:</p>
               <ol className="list-decimal list-inside space-y-1 text-gray-600">
@@ -482,8 +489,8 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
               </ol>
             </div>
           </div>
-        </div>
-      </div>
+        </aside>
+      </main>
     </div>
   );
 }

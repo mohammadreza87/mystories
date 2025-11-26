@@ -1,0 +1,30 @@
+# robots.txt for Next Tale
+# https://nexttale.app
+
+User-agent: *
+Allow: /
+Allow: /story/
+Allow: /user/
+Allow: /create
+
+# Disallow authentication and private areas
+Disallow: /auth/
+Disallow: /profile
+Disallow: /subscription
+Disallow: /quests
+
+# Disallow API endpoints
+Disallow: /api/
+
+# Allow social media crawlers
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+# Sitemap location
+Sitemap: https://nexttale.app/sitemap.xml

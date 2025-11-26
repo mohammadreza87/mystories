@@ -8,6 +8,7 @@ import { useToast } from './Toast';
 import { useShare } from '../hooks/useShare';
 import { LoadingState } from '../shared/components/LoadingState';
 import { getLanguageFlag } from '../shared/utils/formatters';
+import { SEO } from './SEO';
 
 interface StoryLibraryProps {
   onSelectStory: (storyId: string) => void;
@@ -189,10 +190,16 @@ export function StoryLibrary({ onSelectStory, onViewProfile, userId }: StoryLibr
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 pb-20">
+      <SEO
+        title="Discover Interactive Stories"
+        description="Explore AI-powered interactive stories on Next Tale. Choose your own adventure with immersive narratives for kids, teens, and adults. Start your next adventure today!"
+        url="/"
+        keywords={['discover stories', 'browse interactive fiction', 'AI generated stories', 'YA adventure']}
+      />
       <div className="max-w-md mx-auto px-4 py-6">
-        <div className="text-center mb-6">
+        <header className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-3xl shadow-lg mb-3">
-            <Bird className="w-8 h-8 text-white" />
+            <Bird className="w-8 h-8 text-white" aria-hidden="true" />
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
             Next Tale
@@ -200,7 +207,7 @@ export function StoryLibrary({ onSelectStory, onViewProfile, userId }: StoryLibr
           <p className="text-sm text-gray-600">
             Discover your next YA adventure
           </p>
-        </div>
+        </header>
 
         <div className="space-y-4">
           {stories.map((story) => (

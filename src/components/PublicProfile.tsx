@@ -13,6 +13,7 @@ import { useFollow } from '../hooks/useFollow';
 import { useShare } from '../hooks/useShare';
 import { useToast } from './Toast';
 import { LoadingState } from '../shared/components/LoadingState';
+import { SEO, generatePersonSchema } from './SEO';
 
 interface PublicProfileProps {
   profileUserId: string;
@@ -79,16 +80,33 @@ export function PublicProfile({ profileUserId, onBack, onSelectStory }: PublicPr
     return <LoadingState fullScreen message="Loading profile..." />;
   }
 
+  const displayName = profile?.display_name || profile?.username || 'Reader';
+  const personSchema = profile ? generatePersonSchema({
+    id: profileUserId,
+    display_name: displayName,
+    bio: profile.bio,
+    avatar_url: profile.avatar_url,
+  }) : undefined;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-20">
-      <div className="max-w-md mx-auto px-4 py-6">
-        <button
-          onClick={onBack}
-          className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Back</span>
-        </button>
+      <SEO
+        title={`${displayName}'s Profile`}
+        description={profile?.bio || `Check out ${displayName}'s interactive stories on Next Tale. Follow them to see their latest creations.`}
+        url={`/user/${profileUserId}`}
+        image={profile?.avatar_url || undefined}
+        schema={personSchema}
+      />
+      <main className="max-w-md mx-auto px-4 py-6">
+        <nav aria-label="Back navigation">
+          <button
+            onClick={onBack}
+            className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" aria-hidden="true" />
+            <span className="font-medium">Back</span>
+          </button>
+        </nav>
 
         <div className="bg-white rounded-3xl shadow-xl p-6 mb-6">
           <div className="flex items-center space-x-4 mb-4">
@@ -192,7 +210,7 @@ export function PublicProfile({ profileUserId, onBack, onSelectStory }: PublicPr
             </div>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
