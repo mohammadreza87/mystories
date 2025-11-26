@@ -158,7 +158,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
 
     generateChapterVideo({
       prompt: `${story?.title || 'Story'} - ${latest.node.content.slice(0, 400)}`,
-      durationSeconds: 8,
+      motionStrength: 5,
       aspectRatio: '16:9',
     })
       .then((videoUrl) => {
@@ -1051,7 +1051,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
                           try {
                             const videoUrl = await generateChapterVideo({
                               prompt: `${story?.title || 'Story'} - ${chapter.node.content.slice(0, 400)}`,
-                              durationSeconds: 8,
+                              motionStrength: 5,
                               aspectRatio: '16:9',
                             });
                             setChapterVideos((prev) => ({

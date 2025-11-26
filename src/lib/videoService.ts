@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 
 interface GenerateVideoParams {
   prompt: string;
-  durationSeconds?: number;
+  motionStrength?: number; // 1-10, controls how much movement in the video
   aspectRatio?: string;
 }
 
@@ -22,7 +22,7 @@ export async function generateChapterVideo(params: GenerateVideoParams): Promise
       },
       body: JSON.stringify({
         prompt: params.prompt,
-        duration: params.durationSeconds ?? 8,
+        motionStrength: params.motionStrength ?? 5,
         aspectRatio: params.aspectRatio ?? '16:9',
       }),
     }
