@@ -184,6 +184,20 @@ async function createTextToVideoJob(
   if (!response.ok) {
     const errorText = await response.text();
     console.error("Leonardo text-to-video error:", errorText);
+
+    // Parse error for better user-facing messages
+    try {
+      const errorData = JSON.parse(errorText);
+      if (errorData.error?.includes('not enough api tokens')) {
+        throw new Error('Video generation unavailable: Leonardo AI credits exhausted. Please try again later.');
+      }
+      if (errorData.error?.includes('prompt')) {
+        throw new Error('Video generation failed: Content not allowed. Please try a different story.');
+      }
+    } catch (parseError) {
+      // If parsing fails, use original error
+    }
+
     throw new Error(`Leonardo create text-to-video failed: ${errorText}`);
   }
 
