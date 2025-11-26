@@ -1,7 +1,8 @@
-import { X, Sparkles, Zap, Crown } from 'lucide-react';
+import { X, Sparkles, Zap, Crown, Shield } from 'lucide-react';
 import { useState } from 'react';
-import { createCheckoutSession, STRIPE_PRICES } from '../lib/subscriptionService';
+import { createCheckoutSession } from '../lib/subscriptionService';
 import { useToast } from './Toast';
+import { plans, formatPrice, BillingCycle, getPriceId } from '../stripe-config';
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -11,11 +12,17 @@ interface UpgradeModalProps {
 export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('monthly');
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
 
   if (!isOpen) return null;
 
-  const handleUpgrade = async (priceId: string) => {
+  const handleUpgrade = async (planId: string) => {
+    const priceId = getPriceId(planId as any, billingCycle);
+    if (!priceId) {
+      showToast('Stripe price not configured for this plan.', 'error');
+      return;
+    }
+
     setLoading(true);
     try {
       const url = await createCheckoutSession(priceId);
@@ -51,10 +58,10 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
               <Crown className="w-8 h-8 text-white" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900">
-              Unlock Unlimited Story Creation
+              Unlock Premium Story Creation
             </h3>
             <p className="text-gray-600">
-              Create as many magical stories as your imagination allows
+              Choose the plan that fits your speed, editing, and premium needs
             </p>
           </div>
 
@@ -85,9 +92,9 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
           <div className="space-y-4">
             <div className="flex items-center justify-center gap-4">
               <button
-                onClick={() => setSelectedPlan('monthly')}
+                onClick={() => setBillingCycle('monthly')}
                 className={`px-6 py-2 rounded-lg font-medium transition-all ${
-                  selectedPlan === 'monthly'
+                  billingCycle === 'monthly'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
@@ -95,9 +102,9 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                 Monthly
               </button>
               <button
-                onClick={() => setSelectedPlan('annual')}
+                onClick={() => setBillingCycle('annual')}
                 className={`px-6 py-2 rounded-lg font-medium transition-all relative ${
-                  selectedPlan === 'annual'
+                  billingCycle === 'annual'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
@@ -109,40 +116,52 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
               </button>
             </div>
 
-            <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-8 border-2 border-blue-200">
-              <div className="text-center space-y-4">
-                <div>
-                  <div className="text-4xl font-bold text-gray-900">
-                    ${selectedPlan === 'monthly' ? '20' : '200'}
-                  </div>
-                  <div className="text-gray-600">
-                    per {selectedPlan === 'monthly' ? 'month' : 'year'}
-                  </div>
-                  {selectedPlan === 'annual' && (
-                    <div className="text-sm text-green-600 font-medium mt-1">
-                      Just $16.67/month billed annually
+            <div className="grid md:grid-cols-2 gap-4">
+              {plans
+                .filter((p) => p.id !== 'free')
+                .map((plan) => {
+                  const price = billingCycle === 'monthly' ? plan.price.monthly : plan.price.annual;
+                  const icon =
+                    plan.id === 'creator'
+                      ? <Shield className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                      : plan.id === 'pro'
+                        ? <Crown className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
+                        : <Zap className="w-8 h-8 text-blue-600 mx-auto mb-2" />;
+                  return (
+                    <div key={`${plan.id}-${billingCycle}`} className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-6 border-2 border-blue-200">
+                      <div className="text-center space-y-2">
+                        {icon}
+                        <h4 className="text-lg font-semibold text-gray-900">{plan.name}</h4>
+                        <div className="text-3xl font-bold text-gray-900">
+                          {formatPrice(price, 'usd')}
+                          <span className="text-sm font-normal text-gray-600 ml-1">
+                            /{billingCycle === 'annual' ? 'year' : 'month'}
+                          </span>
+                        </div>
+                        {billingCycle === 'annual' && (
+                          <div className="text-xs text-green-600 font-medium">
+                            {formatPrice(plan.price.annual / 12, 'usd')}/mo billed annually
+                          </div>
+                        )}
+                        <button
+                          onClick={() => handleUpgrade(plan.id)}
+                          disabled={loading || !getPriceId(plan.id, billingCycle)}
+                          className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow"
+                        >
+                          {loading ? 'Processing...' : `Upgrade to ${plan.name}`}
+                        </button>
+                        <ul className="text-xs text-gray-600 mt-3 space-y-1 text-left">
+                          {plan.features.slice(0, 4).map((feature) => (
+                            <li key={feature} className="flex items-start">
+                              <span className="text-green-500 mr-1">✓</span>
+                              {feature}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
-                  )}
-                </div>
-
-                <button
-                  onClick={() =>
-                    handleUpgrade(
-                      selectedPlan === 'monthly'
-                        ? STRIPE_PRICES.PRO_MONTHLY
-                        : STRIPE_PRICES.PRO_ANNUAL
-                    )
-                  }
-                  disabled={loading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-4 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
-                >
-                  {loading ? 'Processing...' : 'Upgrade to Pro'}
-                </button>
-
-                <p className="text-xs text-gray-500">
-                  Cancel anytime. Secure payment via Stripe.
-                </p>
-              </div>
+                  );
+                })}
             </div>
           </div>
 

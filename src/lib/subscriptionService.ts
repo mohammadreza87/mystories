@@ -25,8 +25,12 @@ export interface SubscriptionUsage {
 }
 
 export const STRIPE_PRICES = {
-  PRO_MONTHLY: import.meta.env.VITE_STRIPE_PRICE_MONTHLY || '',
-  PRO_ANNUAL: import.meta.env.VITE_STRIPE_PRICE_ANNUAL || '',
+  BASIC_MONTHLY: import.meta.env.VITE_STRIPE_PRICE_BASIC_MONTHLY || '',
+  BASIC_ANNUAL: import.meta.env.VITE_STRIPE_PRICE_BASIC_ANNUAL || '',
+  PRO_MONTHLY: import.meta.env.VITE_STRIPE_PRICE_PRO_MONTHLY || '',
+  PRO_ANNUAL: import.meta.env.VITE_STRIPE_PRICE_PRO_ANNUAL || '',
+  MAX_MONTHLY: import.meta.env.VITE_STRIPE_PRICE_MAX_MONTHLY || '',
+  MAX_ANNUAL: import.meta.env.VITE_STRIPE_PRICE_MAX_ANNUAL || '',
 };
 
 export async function getUserSubscription(userId: string): Promise<UserSubscription | null> {

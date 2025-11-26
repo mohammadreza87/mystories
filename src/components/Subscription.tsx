@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Crown, Sparkles, Zap, Check, ArrowLeft, Settings, Loader } from 'lucide-react';
-import { getUserSubscription, createCheckoutSession, createCustomerPortalSession, STRIPE_PRICES } from '../lib/subscriptionService';
+import { Crown, Sparkles, Zap, Check, ArrowLeft, Settings, Loader, Shield } from 'lucide-react';
+import { getUserSubscription, createCheckoutSession, createCustomerPortalSession } from '../lib/subscriptionService';
 import type { UserProfile } from '../lib/types';
 import { useAuth } from '../lib/authContext';
 import { useToast } from './Toast';
+import { plans, formatPrice, BillingCycle, getPriceId } from '../stripe-config';
 
 interface SubscriptionProps {
   userId: string;
@@ -16,7 +17,7 @@ export function Subscription({ userId, onBack }: SubscriptionProps) {
   const [subscription, setSubscription] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('monthly');
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
 
   useEffect(() => {
     loadSubscription();
@@ -37,7 +38,8 @@ export function Subscription({ userId, onBack }: SubscriptionProps) {
     }
   };
 
-  const handleUpgrade = async (priceId: string) => {
+  const handleUpgrade = async (planId: string) => {
+    const priceId = getPriceId(planId as any, billingCycle);
     if (!priceId || priceId.includes('your_') || priceId.includes('_here')) {
       showToast('Stripe is not configured. Please check your API keys.', 'error');
       return;
@@ -68,7 +70,8 @@ export function Subscription({ userId, onBack }: SubscriptionProps) {
     }
   };
 
-  const hasPro = subscription?.subscription_tier === 'pro' || subscription?.is_grandfathered;
+  const activeTier = subscription?.subscription_tier || 'free';
+  const hasPaidAccess = activeTier !== 'free' || subscription?.is_grandfathered;
 
   if (loading) {
     return (
@@ -96,20 +99,20 @@ export function Subscription({ userId, onBack }: SubscriptionProps) {
             <Crown className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            {hasPro ? 'Your Subscription' : 'Upgrade to Pro'}
+            {hasPaidAccess ? 'Your Subscription' : 'Choose Your Plan'}
           </h1>
           <p className="text-gray-600 text-lg">
-            {hasPro
+            {hasPaidAccess
               ? 'Manage your premium membership'
-              : 'Unlock unlimited story creation and premium features'}
+              : 'Unlock the right mix of speed, editing, and premium features'}
           </p>
         </div>
 
-        {hasPro ? (
+        {hasPaidAccess ? (
           <div className="bg-white rounded-3xl shadow-xl p-8 mb-8">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Pro Membership</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Premium Membership</h2>
                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full text-sm font-medium">
                   <Crown className="w-4 h-4" />
                   <span>Active {subscription?.is_grandfathered && '(Lifetime)'}</span>
@@ -124,10 +127,6 @@ export function Subscription({ userId, onBack }: SubscriptionProps) {
                 <span className="font-semibold text-green-600 capitalize">
                   {subscription?.subscription_status}
                 </span>
-              </div>
-              <div className="flex items-center justify-between py-3 border-b border-gray-200">
-                <span className="text-gray-600">Stories Generated Today</span>
-                <span className="font-semibold text-gray-900">Unlimited</span>
               </div>
               <div className="flex items-center justify-between py-3 border-b border-gray-200">
                 <span className="text-gray-600">Total Stories Created</span>
@@ -168,9 +167,9 @@ export function Subscription({ userId, onBack }: SubscriptionProps) {
                 <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
                   <Sparkles className="w-6 h-6 text-blue-600" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Unlimited Stories</h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Flexible Story Limits</h3>
                 <p className="text-gray-600">
-                  Generate unlimited interactive stories every day without any restrictions
+                  Start with 1/day on Free, scale to unlimited with Pro and Creator
                 </p>
               </div>
 
@@ -180,7 +179,7 @@ export function Subscription({ userId, onBack }: SubscriptionProps) {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Priority Processing</h3>
                 <p className="text-gray-600">
-                  Faster story generation with priority access to our AI processing queue
+                  Faster generation as you move up tiers (2x on Starter, more on higher tiers)
                 </p>
               </div>
 
@@ -190,106 +189,84 @@ export function Subscription({ userId, onBack }: SubscriptionProps) {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Premium Features</h3>
                 <p className="text-gray-600">
-                  Get access to all current and future premium features as they launch
+                  Unlock editing, audio, custom images, downloads, video, and more
                 </p>
               </div>
             </div>
 
-            <div className="bg-white rounded-3xl shadow-xl p-8 mb-8">
-              <div className="flex items-center justify-center gap-4 mb-8">
-                <button
-                  onClick={() => setSelectedPlan('monthly')}
-                  className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-                    selectedPlan === 'monthly'
-                      ? 'bg-blue-600 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Monthly
-                </button>
-                <button
-                  onClick={() => setSelectedPlan('annual')}
-                  className={`px-6 py-3 rounded-xl font-semibold transition-all relative ${
-                    selectedPlan === 'annual'
-                      ? 'bg-blue-600 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Annual
-                  <span className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
-                    Save $40
-                  </span>
-                </button>
-              </div>
-
-              <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-3xl p-8 border-2 border-blue-200 mb-6">
-                <div className="text-center">
-                  <div className="text-5xl font-bold text-gray-900 mb-2">
-                    ${selectedPlan === 'monthly' ? '20' : '200'}
-                  </div>
-                  <div className="text-gray-600 mb-1">
-                    per {selectedPlan === 'monthly' ? 'month' : 'year'}
-                  </div>
-                  {selectedPlan === 'annual' && (
-                    <div className="text-sm text-green-600 font-medium">
-                      Just $16.67/month billed annually
-                    </div>
-                  )}
-                </div>
-              </div>
-
+            <div className="flex items-center justify-center gap-4 mb-8">
               <button
-                onClick={() =>
-                  handleUpgrade(
-                    selectedPlan === 'monthly'
-                      ? STRIPE_PRICES.PRO_MONTHLY
-                      : STRIPE_PRICES.PRO_ANNUAL
-                  )
-                }
-                disabled={checkoutLoading}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-5 rounded-2xl hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl flex items-center justify-center gap-2 text-lg"
+                onClick={() => setBillingCycle('monthly')}
+                className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+                  billingCycle === 'monthly'
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
-                {checkoutLoading ? (
-                  <>
-                    <Loader className="w-6 h-6 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Crown className="w-6 h-6" />
-                    Upgrade to Pro
-                  </>
-                )}
+                Monthly
               </button>
-
-              <p className="text-center text-sm text-gray-500 mt-4">
-                Cancel anytime. Secure payment via Stripe.
-              </p>
+              <button
+                onClick={() => setBillingCycle('annual')}
+                className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+                  billingCycle === 'annual'
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Annual
+              </button>
             </div>
 
-            <div className="bg-white rounded-3xl shadow-xl p-8">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 text-center">
-                Everything included:
-              </h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                {[
-                  'Unlimited story generations',
-                  'Priority processing queue',
-                  'All current features',
-                  'Future premium features',
-                  'Cancel anytime',
-                  'Email support',
-                  'No hidden fees',
-                  'Secure payments via Stripe',
-                ].map((feature, index) => (
-                  <div key={index} className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Check className="w-4 h-4 text-green-600" />
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
+              {plans
+                .filter((p) => p.id !== 'free')
+                .map((plan) => {
+                  const price = billingCycle === 'monthly' ? plan.price.monthly : plan.price.annual;
+                  const priceId = getPriceId(plan.id, billingCycle);
+                  return (
+                    <div key={`${plan.id}-${billingCycle}`} className="bg-white rounded-3xl shadow-xl p-8">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
+                          <p className="text-gray-600">{plan.description}</p>
+                        </div>
+                        {plan.id === 'creator' ? (
+                          <Shield className="w-10 h-10 text-purple-600" />
+                        ) : plan.id === 'pro' ? (
+                          <Crown className="w-10 h-10 text-yellow-500" />
+                        ) : (
+                          <Zap className="w-10 h-10 text-blue-500" />
+                        )}
+                      </div>
+                      <div className="text-4xl font-bold text-gray-900 mb-2">
+                        {formatPrice(price, 'usd')}
+                        <span className="text-lg font-normal text-gray-600">
+                          /{billingCycle === 'annual' ? 'year' : 'month'}
+                        </span>
+                      </div>
+                      {billingCycle === 'annual' && (
+                        <p className="text-sm text-green-600 font-medium mb-4">
+                          {formatPrice(plan.price.annual / 12, 'usd')}/mo billed annually
+                        </p>
+                      )}
+                      <ul className="space-y-2 mb-6">
+                        {plan.features.slice(0, 5).map((feature) => (
+                          <li key={feature} className="flex items-center text-sm text-gray-700">
+                            <Check className="w-4 h-4 text-green-500 mr-2" />
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+                      <button
+                        onClick={() => handleUpgrade(plan.id)}
+                        disabled={checkoutLoading || !priceId}
+                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-4 rounded-2xl hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow"
+                      >
+                        {checkoutLoading ? 'Processing...' : `Upgrade to ${plan.name}`}
+                      </button>
                     </div>
-                    <span className="text-gray-700">{feature}</span>
-                  </div>
-                ))}
-              </div>
+                  );
+                })}
             </div>
 
             <div className="mt-8 bg-gray-50 rounded-2xl p-6">
@@ -297,9 +274,7 @@ export function Subscription({ userId, onBack }: SubscriptionProps) {
               <div className="space-y-2 text-sm text-gray-600">
                 <div className="flex items-center justify-between">
                   <span>Stories per day:</span>
-                  <span className="font-semibold text-gray-900">
-                    {subscription?.stories_generated_today || 0} / 1
-                  </span>
+                  <span className="font-semibold text-gray-900">1 / 1</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Total stories created:</span>
