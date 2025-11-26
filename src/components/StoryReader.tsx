@@ -361,7 +361,9 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
       console.log('Setting chapter with choices:', chapter.choices.length);
       setChapters([chapter]);
 
-      await trackChapterRead(userId, storyId, node.id, currentStory?.created_by || null);
+      if (userId) {
+        await trackChapterRead(userId, storyId, node.id, currentStory?.created_by || null);
+      }
 
       // Generate images in background without blocking text display
       if (!shouldUseCoverImage && !existingNodeImage && currentStory) {
@@ -393,12 +395,6 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
     chapterIndex: number,
     choice: StoryChoice & { to_node: StoryNode }
   ) => {
-    if (!userId) {
-      showToast('Sign up or log in to continue the story', 'warning');
-      navigate('/auth/signup', { state: { from: `/story/${storyId}/read` } });
-      return;
-    }
-
     const updatedChapters = [...chapters];
     updatedChapters[chapterIndex].selectedChoiceId = choice.id;
     setChapters(updatedChapters);
@@ -491,6 +487,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
         const newPath = [...pathTaken, newNodeKey];
         setPathTaken(newPath);
 
+      if (userId) {
         await saveProgress(
           userId,
           storyId,
@@ -498,6 +495,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
           newPath,
           generatedStory.isEnding
         );
+      }
 
         const newChapter: StoryChapter = {
           node: newNode,
@@ -509,10 +507,12 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
       setChapters([...updatedChapters, newChapter]);
       setIsGenerating(false);
 
-      await trackChapterRead(userId, storyId, newNode.id, story.created_by || null);
+        if (userId) {
+          await trackChapterRead(userId, storyId, newNode.id, story.created_by || null);
 
-        if (generatedStory.isEnding) {
-          await trackStoryCompletion(userId, storyId, story.created_by || null);
+          if (generatedStory.isEnding) {
+            await trackStoryCompletion(userId, storyId, story.created_by || null);
+          }
         }
 
         // Generate image in background without blocking (fire and forget)
@@ -538,13 +538,15 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
       const newPath = [...pathTaken, choice.to_node.node_key];
       setPathTaken(newPath);
 
-      await saveProgress(
-        userId,
-        storyId,
-        choice.to_node.id,
-        newPath,
-        choice.to_node.is_ending
-      );
+      if (userId) {
+        await saveProgress(
+          userId,
+          storyId,
+          choice.to_node.id,
+          newPath,
+          choice.to_node.is_ending
+        );
+      }
 
       const nextChoices = choice.to_node.is_ending
         ? []
@@ -621,10 +623,12 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
         setChapters([...updatedChapters, newChapter]);
       }
 
-      await trackChapterRead(userId, storyId, choice.to_node.id, story?.created_by || null);
+      if (userId) {
+        await trackChapterRead(userId, storyId, choice.to_node.id, story?.created_by || null);
 
-      if (choice.to_node.is_ending) {
-        await trackStoryCompletion(userId, storyId, story?.created_by || null);
+        if (choice.to_node.is_ending) {
+          await trackStoryCompletion(userId, storyId, story?.created_by || null);
+        }
       }
 
       // Generate image in background without blocking (fire and forget)

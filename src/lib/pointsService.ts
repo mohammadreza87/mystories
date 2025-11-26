@@ -13,6 +13,7 @@ export async function trackChapterRead(
   nodeId: string,
   creatorId: string | null
 ): Promise<void> {
+  if (!userId) return; // only track for authenticated users
   try {
     const { error: progressError } = await supabase
       .from('reading_progress')
@@ -79,6 +80,7 @@ export async function trackStoryCompletion(
   storyId: string,
   creatorId: string | null
 ): Promise<boolean> {
+  if (!userId) return false; // only track for authenticated users
   try {
     const { data: existingCompletion, error: checkError } = await supabase
       .from('story_completions')

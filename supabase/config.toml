@@ -3,3 +3,6 @@ verify_jwt = false
 
 [functions.generate-image]
 verify_jwt = false
+
+[functions.og-story]
+verify_jwt = false
