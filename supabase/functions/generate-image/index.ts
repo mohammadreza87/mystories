@@ -381,6 +381,27 @@ function buildSafeImagePrompt(originalPrompt: string, isAdult: boolean): string 
   return safePrompt;
 }
 
+function buildStructuredScenePrompt(params: {
+  scene: string;
+  storyTitle?: string;
+  artStyle?: string;
+  targetAudience?: string;
+  styleReference?: string;
+  storyContext?: string;
+}): string {
+  const { scene, storyTitle, artStyle, targetAudience, styleReference, storyContext } = params;
+  return [
+    storyTitle ? `Title: ${storyTitle}.` : "",
+    targetAudience ? `Audience: ${targetAudience}.` : "",
+    storyContext ? `Context: ${storyContext.slice(0, 400)}.` : "",
+    `Scene: ${scene}`,
+    artStyle ? `Art style: ${artStyle} (must be applied).` : "",
+    styleReference ? `Style hints: ${styleReference.slice(0, 150)}.` : "",
+    "Include setting/time, key characters with visual traits and actions, mood/tone, lighting and color palette, composition/perspective.",
+    "Constraints: one frame, no text/speech bubbles/watermarks, no aspect ratios, no camera jargon."
+  ].filter(Boolean).join(" ");
+}
+
 async function buildDeepseekPrompt(
   basePrompt: string,
   artStyle: string | undefined,
@@ -581,17 +602,24 @@ Deno.serve(async (req: Request) => {
     const artStyleConfig = ART_STYLE_CONFIG[selectedArtStyle] || ART_STYLE_CONFIG.comic;
     const STYLE_PREFIX = artStyleConfig.promptPrefix;
 
+    const structuredPrompt = buildStructuredScenePrompt({
+      scene: sanitizedPrompt,
+      storyTitle,
+      artStyle: selectedArtStyle,
+      targetAudience,
+      styleReference: styleReference || STYLE_PREFIX,
+      storyContext: storyText || prompt
+    });
+
     let fullPrompt: string;
 
     if (isComic || isAdult) {
-      // Adult content - use selected art style
-      fullPrompt = `${STYLE_PREFIX}. Scene: ${sanitizedPrompt}. No text, no speech bubbles, no captions, no letters.`;
+      fullPrompt = `${STYLE_PREFIX}. ${structuredPrompt}. No text, no speech bubbles, no captions, no letters.`;
     } else {
-      // Children's content - use selected art style with softer adjustments for non-realistic
       if (selectedArtStyle === 'realistic') {
-        fullPrompt = `${STYLE_PREFIX}, family-friendly, warm lighting. Scene: ${rawPrompt}. No text, no speech bubbles, no captions, no letters.`;
+        fullPrompt = `${STYLE_PREFIX}, family-friendly, warm lighting. ${structuredPrompt}. No text, no speech bubbles, no captions, no letters.`;
       } else {
-        fullPrompt = `${STYLE_PREFIX}, softer colors, friendly character designs, whimsical atmosphere. Scene: ${rawPrompt}. No text, no speech bubbles, no captions, no letters.`;
+        fullPrompt = `${STYLE_PREFIX}, softer colors, friendly character designs, whimsical atmosphere. ${structuredPrompt}. No text, no speech bubbles, no captions, no letters.`;
       }
     }
 
