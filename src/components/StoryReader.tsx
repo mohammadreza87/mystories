@@ -6,6 +6,7 @@ import { progressQuest } from '../lib/questsService';
 import { supabase } from '../lib/supabase';
 import type { StoryNode, StoryChoice, Story, StoryReaction } from '../lib/types';
 import { useToast } from './Toast';
+import { useTimeout } from '../hooks';
 
 interface StoryReaderProps {
   storyId: string;
@@ -23,6 +24,7 @@ interface StoryChapter {
 
 export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
   const { showToast } = useToast();
+  const safeTimeout = useTimeout();
   const [chapters, setChapters] = useState<StoryChapter[]>([]);
   const [pathTaken, setPathTaken] = useState<string[]>(['start']);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -117,7 +119,8 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
 
       if (isNewChapter && !latestChapter.node.is_ending && !isLoadingNode && hasContent) {
         currentChapterIdRef.current = latestChapter.node.id;
-        setTimeout(() => {
+        // Use safe timeout to prevent memory leaks on unmount
+        safeTimeout.set(() => {
           speakText(latestChapter.node.content, latestChapter.node.id, latestChapter.node.audio_url);
         }, 300);
       }

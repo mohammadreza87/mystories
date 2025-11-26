@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { followUser, unfollowUser, isFollowing, getFollowerCount, getFollowingCount } from '../lib/storyService';
+import { queryKeys } from '../lib/queryClient';
 
 interface UseFollowResult {
   isFollowing: boolean;
@@ -13,60 +15,103 @@ export function useFollow(
   currentUserId: string | undefined,
   targetUserId: string
 ): UseFollowResult {
-  const [following, setFollowing] = useState(false);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [followingCount, setFollowingCount] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const canFollow = !!currentUserId && currentUserId !== targetUserId;
 
-  useEffect(() => {
-    const loadFollowStatus = async () => {
-      if (!currentUserId || currentUserId === targetUserId) return;
+  // Query for follow status
+  const { data: followingStatus } = useQuery({
+    queryKey: queryKeys.isFollowing(currentUserId || '', targetUserId),
+    queryFn: () => isFollowing(targetUserId),
+    enabled: canFollow,
+  });
 
-      try {
-        const [isFollowingUser, followers, following] = await Promise.all([
-          isFollowing(targetUserId),
-          getFollowerCount(targetUserId),
-          getFollowingCount(targetUserId),
-        ]);
+  // Query for follower count
+  const { data: followersCount = 0 } = useQuery({
+    queryKey: queryKeys.followers(targetUserId),
+    queryFn: () => getFollowerCount(targetUserId),
+  });
 
-        setFollowing(isFollowingUser);
-        setFollowersCount(followers);
-        setFollowingCount(following);
-      } catch (error) {
-        console.error('Error loading follow status:', error);
-      }
-    };
+  // Query for following count
+  const { data: followingCount = 0 } = useQuery({
+    queryKey: queryKeys.following(targetUserId),
+    queryFn: () => getFollowingCount(targetUserId),
+  });
 
-    loadFollowStatus();
-  }, [currentUserId, targetUserId]);
-
-  const toggleFollow = useCallback(async () => {
-    if (!currentUserId || currentUserId === targetUserId || loading) return;
-
-    setLoading(true);
-    try {
-      if (following) {
+  // Mutation for toggle follow
+  const toggleMutation = useMutation({
+    mutationFn: async () => {
+      if (followingStatus) {
         await unfollowUser(targetUserId);
-        setFollowing(false);
-        setFollowersCount(prev => prev - 1);
+        return false;
       } else {
         await followUser(targetUserId);
-        setFollowing(true);
-        setFollowersCount(prev => prev + 1);
+        return true;
       }
-    } catch (error) {
-      console.error('Error toggling follow:', error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUserId, targetUserId, following, loading]);
+    },
+    onMutate: async () => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.isFollowing(currentUserId || '', targetUserId),
+      });
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.followers(targetUserId),
+      });
+
+      // Snapshot previous values
+      const previousFollowing = queryClient.getQueryData(
+        queryKeys.isFollowing(currentUserId || '', targetUserId)
+      );
+      const previousFollowers = queryClient.getQueryData(
+        queryKeys.followers(targetUserId)
+      );
+
+      // Optimistically update
+      const newFollowing = !followingStatus;
+      queryClient.setQueryData(
+        queryKeys.isFollowing(currentUserId || '', targetUserId),
+        newFollowing
+      );
+      queryClient.setQueryData(
+        queryKeys.followers(targetUserId),
+        (old: number) => (newFollowing ? old + 1 : Math.max(0, old - 1))
+      );
+
+      return { previousFollowing, previousFollowers };
+    },
+    onError: (_, __, context) => {
+      // Rollback on error
+      if (context) {
+        queryClient.setQueryData(
+          queryKeys.isFollowing(currentUserId || '', targetUserId),
+          context.previousFollowing
+        );
+        queryClient.setQueryData(
+          queryKeys.followers(targetUserId),
+          context.previousFollowers
+        );
+      }
+    },
+    onSettled: () => {
+      // Refetch after mutation
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.isFollowing(currentUserId || '', targetUserId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.followers(targetUserId),
+      });
+    },
+  });
+
+  const toggleFollow = useCallback(async () => {
+    if (!canFollow || toggleMutation.isPending) return;
+    await toggleMutation.mutateAsync();
+  }, [canFollow, toggleMutation]);
 
   return {
-    isFollowing: following,
+    isFollowing: followingStatus ?? false,
     followersCount,
     followingCount,
-    loading,
+    loading: toggleMutation.isPending,
     toggleFollow,
   };
 }
@@ -75,48 +120,70 @@ export function useFollow(
  * Hook for tracking follow status of multiple users
  */
 export function useFollowMultiple(currentUserId: string | undefined) {
-  const [followingMap, setFollowingMap] = useState<Record<string, boolean>>({});
-  const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
+  const queryClient = useQueryClient();
 
-  const checkFollowing = useCallback(async (targetUserId: string) => {
-    if (!currentUserId || currentUserId === targetUserId) return false;
+  const checkFollowing = useCallback(
+    async (targetUserId: string): Promise<boolean> => {
+      if (!currentUserId || currentUserId === targetUserId) return false;
 
-    try {
-      const isFollowingUser = await isFollowing(targetUserId);
-      setFollowingMap(prev => ({ ...prev, [targetUserId]: isFollowingUser }));
-      return isFollowingUser;
-    } catch (error) {
-      console.error('Error checking follow status:', error);
-      return false;
-    }
-  }, [currentUserId]);
+      // Check cache first
+      const cached = queryClient.getQueryData<boolean>(
+        queryKeys.isFollowing(currentUserId, targetUserId)
+      );
+      if (cached !== undefined) return cached;
 
-  const toggleFollow = useCallback(async (targetUserId: string) => {
-    if (!currentUserId || currentUserId === targetUserId || loadingMap[targetUserId]) return;
+      // Fetch and cache
+      const result = await isFollowing(targetUserId);
+      queryClient.setQueryData(
+        queryKeys.isFollowing(currentUserId, targetUserId),
+        result
+      );
+      return result;
+    },
+    [currentUserId, queryClient]
+  );
 
-    setLoadingMap(prev => ({ ...prev, [targetUserId]: true }));
-    try {
-      if (followingMap[targetUserId]) {
-        await unfollowUser(targetUserId);
-        setFollowingMap(prev => ({ ...prev, [targetUserId]: false }));
-      } else {
-        await followUser(targetUserId);
-        setFollowingMap(prev => ({ ...prev, [targetUserId]: true }));
+  const toggleFollow = useCallback(
+    async (targetUserId: string) => {
+      if (!currentUserId || currentUserId === targetUserId) return;
+
+      const currentlyFollowing =
+        queryClient.getQueryData<boolean>(
+          queryKeys.isFollowing(currentUserId, targetUserId)
+        ) ?? false;
+
+      try {
+        if (currentlyFollowing) {
+          await unfollowUser(targetUserId);
+        } else {
+          await followUser(targetUserId);
+        }
+        queryClient.setQueryData(
+          queryKeys.isFollowing(currentUserId, targetUserId),
+          !currentlyFollowing
+        );
+      } catch (error) {
+        console.error('Error toggling follow:', error);
+        throw error;
       }
-    } catch (error) {
-      console.error('Error toggling follow:', error);
-      throw error;
-    } finally {
-      setLoadingMap(prev => ({ ...prev, [targetUserId]: false }));
-    }
-  }, [currentUserId, followingMap, loadingMap]);
+    },
+    [currentUserId, queryClient]
+  );
+
+  const isFollowingUser = useCallback(
+    (userId: string): boolean => {
+      return (
+        queryClient.getQueryData<boolean>(
+          queryKeys.isFollowing(currentUserId || '', userId)
+        ) ?? false
+      );
+    },
+    [currentUserId, queryClient]
+  );
 
   return {
-    followingMap,
-    loadingMap,
     checkFollowing,
     toggleFollow,
-    isFollowing: (userId: string) => followingMap[userId] ?? false,
-    isLoading: (userId: string) => loadingMap[userId] ?? false,
+    isFollowing: isFollowingUser,
   };
 }

@@ -20,3 +20,6 @@ export { useShare } from './useShare';
 // User profile management
 export { useProfile, usePublicProfile } from './useProfile';
 export type { UserProfile } from './useProfile';
+
+// Timer utilities (memory-safe timeouts and intervals)
+export { useTimeout, useInterval, useIsMounted, useSafeAsync } from './useTimeout';

@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { queryKeys } from '../lib/queryClient';
 
 export interface UserProfile {
   id: string;
@@ -23,65 +24,66 @@ interface UseProfileResult {
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
 }
 
+async function fetchProfile(userId: string): Promise<UserProfile | null> {
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+async function updateProfileApi(
+  userId: string,
+  updates: Partial<UserProfile>
+): Promise<void> {
+  const { error } = await supabase
+    .from('user_profiles')
+    .update(updates)
+    .eq('id', userId);
+
+  if (error) throw error;
+}
+
 export function useProfile(userId: string | undefined): UseProfileResult {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
 
-  const loadProfile = useCallback(async () => {
-    if (!userId) {
-      setLoading(false);
-      return;
+  const { data: profile, isLoading, error } = useQuery({
+    queryKey: queryKeys.profile(userId || ''),
+    queryFn: () => fetchProfile(userId!),
+    enabled: !!userId,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (updates: Partial<UserProfile>) =>
+      updateProfileApi(userId!, updates),
+    onSuccess: (_, updates) => {
+      // Optimistically update the cache
+      queryClient.setQueryData(
+        queryKeys.profile(userId!),
+        (old: UserProfile | null) => (old ? { ...old, ...updates } : null)
+      );
+    },
+  });
+
+  const refresh = async () => {
+    if (userId) {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.profile(userId) });
     }
+  };
 
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data, error: fetchError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (fetchError) throw fetchError;
-
-      setProfile(data);
-    } catch (err) {
-      console.error('Error loading profile:', err);
-      setError(err instanceof Error ? err : new Error('Failed to load profile'));
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
-
-  const updateProfile = useCallback(async (updates: Partial<UserProfile>) => {
-    if (!userId || !profile) return;
-
-    try {
-      const { error: updateError } = await supabase
-        .from('user_profiles')
-        .update(updates)
-        .eq('id', userId);
-
-      if (updateError) throw updateError;
-
-      setProfile(prev => prev ? { ...prev, ...updates } : null);
-    } catch (err) {
-      console.error('Error updating profile:', err);
-      throw err;
-    }
-  }, [userId, profile]);
+  const updateProfile = async (updates: Partial<UserProfile>) => {
+    if (!userId) return;
+    await updateMutation.mutateAsync(updates);
+  };
 
   return {
-    profile,
-    loading,
-    error,
-    refresh: loadProfile,
+    profile: profile ?? null,
+    loading: isLoading,
+    error: (error || updateMutation.error) as Error | null,
+    refresh,
     updateProfile,
   };
 }
@@ -89,47 +91,33 @@ export function useProfile(userId: string | undefined): UseProfileResult {
 /**
  * Hook for loading a public profile (for viewing other users)
  */
+async function fetchPublicProfile(userId: string): Promise<UserProfile | null> {
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('id, username, display_name, bio, avatar_url, is_profile_public')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  // Check if profile is public
+  if (data && !data.is_profile_public) {
+    throw new Error('This profile is private');
+  }
+
+  return data as UserProfile | null;
+}
+
 export function usePublicProfile(userId: string | undefined) {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const { data: profile, isLoading, error } = useQuery({
+    queryKey: queryKeys.publicProfile(userId || ''),
+    queryFn: () => fetchPublicProfile(userId!),
+    enabled: !!userId,
+  });
 
-  useEffect(() => {
-    const loadProfile = async () => {
-      if (!userId) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        const { data, error: fetchError } = await supabase
-          .from('user_profiles')
-          .select('id, username, display_name, bio, avatar_url, is_profile_public')
-          .eq('id', userId)
-          .maybeSingle();
-
-        if (fetchError) throw fetchError;
-
-        // Check if profile is public
-        if (data && !data.is_profile_public) {
-          setProfile(null);
-          setError(new Error('This profile is private'));
-        } else {
-          setProfile(data);
-        }
-      } catch (err) {
-        console.error('Error loading public profile:', err);
-        setError(err instanceof Error ? err : new Error('Failed to load profile'));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadProfile();
-  }, [userId]);
-
-  return { profile, loading, error };
+  return {
+    profile: profile ?? null,
+    loading: isLoading,
+    error: error as Error | null,
+  };
 }

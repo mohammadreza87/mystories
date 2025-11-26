@@ -1,22 +1,22 @@
 /**
  * Application configuration.
  * Centralizes all environment variables and configuration settings.
+ * Uses the env validation module for type-safe access.
  */
 
-const getEnvVar = (key: string): string => {
-  const value = import.meta.env[key];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`);
-  }
-  return value;
-};
+import { getConfig } from './lib/env';
+
+// Get validated configuration (throws on missing required vars)
+const envConfig = getConfig();
 
 export const config = {
   supabase: {
-    url: getEnvVar('VITE_SUPABASE_URL'),
-    anonKey: getEnvVar('VITE_SUPABASE_ANON_KEY'),
+    url: envConfig.supabase.url,
+    anonKey: envConfig.supabase.anonKey,
   },
   stripe: {
-    publishableKey: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
+    publishableKey: envConfig.stripe.publishableKey,
   },
+  isDev: envConfig.isDev,
+  isProd: envConfig.isProd,
 } as const;

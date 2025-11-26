@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getSubscriptionUsage, SubscriptionUsage } from '../lib/subscriptionService';
+import { queryKeys } from '../lib/queryClient';
 
 interface UseSubscriptionUsageResult {
   usage: SubscriptionUsage | null;
@@ -11,32 +12,22 @@ interface UseSubscriptionUsageResult {
 }
 
 export function useSubscriptionUsage(userId: string | undefined): UseSubscriptionUsageResult {
-  const [usage, setUsage] = useState<SubscriptionUsage | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
 
-  const loadUsage = useCallback(async () => {
-    if (!userId) {
-      setLoading(false);
-      return;
+  const { data: usage, isLoading, error } = useQuery({
+    queryKey: queryKeys.subscriptionUsage(userId || ''),
+    queryFn: () => getSubscriptionUsage(userId!),
+    enabled: !!userId,
+    // Usage data should refresh more frequently
+    staleTime: 1 * 60 * 1000, // 1 minute
+    gcTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const refresh = async () => {
+    if (userId) {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.subscriptionUsage(userId) });
     }
-
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await getSubscriptionUsage(userId);
-      setUsage(data);
-    } catch (err) {
-      console.error('Error loading subscription usage:', err);
-      setError(err instanceof Error ? err : new Error('Failed to load usage'));
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    loadUsage();
-  }, [loadUsage]);
+  };
 
   const canGenerate = usage?.canGenerate ?? false;
   const remainingStories = usage?.isPro || usage?.isGrandfathered
@@ -44,10 +35,10 @@ export function useSubscriptionUsage(userId: string | undefined): UseSubscriptio
     : Math.max(0, (usage?.dailyLimit ?? 1) - (usage?.storiesGeneratedToday ?? 0));
 
   return {
-    usage,
-    loading,
-    error,
-    refresh: loadUsage,
+    usage: usage ?? null,
+    loading: isLoading,
+    error: error as Error | null,
+    refresh,
     canGenerate,
     remainingStories,
   };
