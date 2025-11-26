@@ -104,36 +104,36 @@ Deno.serve(async (req: Request) => {
     let actualUserPrompt = "";
 
     if (generateFullStory && userPrompt) {
-      systemPrompt = `You are a creative children's story writer. Based on a user's story request, create complete story metadata and the opening chapter.
+      systemPrompt = `You are a creative children's story writer. Create a SHORT, PUNCHY opening chapter that HOOKS kids immediately!
 
 CRITICAL LANGUAGE REQUIREMENT:
-- FIRST, detect the language of the user's prompt
-- THEN, write the ENTIRE story (title, description, content, choices) in THAT EXACT LANGUAGE
-- NEVER mix languages or use a different language than the prompt
+- Detect the language of the user's prompt
+- Write EVERYTHING in THAT EXACT LANGUAGE
 
 STORY RULES:
-1. Keep all content appropriate for children (no violence, scary content, or inappropriate themes)
-2. Create engaging, age-appropriate stories for kids aged 5-10
-3. The opening should be 2-3 SHORT paragraphs (maximum 4-5 sentences total)
-4. Always provide exactly 2-3 choices for what happens next
+1. Keep content appropriate for children (no violence, scary content, or inappropriate themes)
+2. Create engaging stories for kids aged 5-10
+3. START WITH ACTION or something exciting - NO boring setup!
+4. Opening: 1-2 SHORT paragraphs (3-4 sentences MAX). Make every word count!
+5. Provide 2-3 exciting choices
 
-Return ONLY valid JSON in this exact format:
+Return ONLY valid JSON:
 {
-  "title": "Story Title IN THE SAME LANGUAGE AS THE PROMPT",
-  "description": "Brief 1-2 sentence description IN THE SAME LANGUAGE AS THE PROMPT",
+  "title": "Catchy Story Title",
+  "description": "1 sentence HOOK",
   "ageRange": "5-10",
   "estimatedDuration": 10,
-  "storyContext": "Brief context for AI to continue generating this story IN THE SAME LANGUAGE AS THE PROMPT",
-  "startContent": "The opening paragraphs (2-3 SHORT paragraphs, maximum 4-5 sentences total) IN THE SAME LANGUAGE AS THE PROMPT",
+  "storyContext": "Key context for continuation",
+  "startContent": "SHORT, PUNCHY opening (1-2 paragraphs, 3-4 sentences MAX)",
   "initialChoices": [
-    {"text": "Choice 1 text IN THE SAME LANGUAGE AS THE PROMPT", "hint": "What might happen IN THE SAME LANGUAGE AS THE PROMPT"},
-    {"text": "Choice 2 text IN THE SAME LANGUAGE AS THE PROMPT", "hint": "What might happen IN THE SAME LANGUAGE AS THE PROMPT"}
+    {"text": "Exciting choice 1", "hint": "Quick hint"},
+    {"text": "Exciting choice 2", "hint": "Quick hint"}
   ],
   "language": "en"
 }`;
 
       actualUserPrompt = `User's story request: "${userPrompt}"
-Generate a complete story setup with an engaging opening and initial choices.`;
+Create a SHORT, CATCHY opening that grabs attention IMMEDIATELY! No filler - jump into the action!`;
     } else {
       const currentChapter = chapterCount || 0;
       const minimumChapters = 3;
@@ -141,21 +141,22 @@ Generate a complete story setup with an engaging opening and initial choices.`;
       const shouldPreventEnding = currentChapter < minimumChapters;
       const shouldEncourageEnding = currentChapter >= maximumChapters;
 
-      systemPrompt = `You are a creative children's story writer for kids aged 5-10. Create engaging, age-appropriate interactive stories.
+      systemPrompt = `You are a creative children's story writer for kids aged 5-10. Keep it SHORT and EXCITING!
 
 CRITICAL: Continue in the SAME LANGUAGE as the previous content.
 
 STORY RULES:
 1. Keep content appropriate for children
-2. Each story segment should be 2-3 SHORT paragraphs (maximum 4-5 sentences total)
-3. Stories MUST have at least ${minimumChapters} chapters before ending
-4. Stories SHOULD end by chapter ${maximumChapters}
-5. ${shouldPreventEnding ? `This is chapter ${currentChapter + 1}. DO NOT END THE STORY. Provide 2-3 choices.` : shouldEncourageEnding ? `This is chapter ${currentChapter + 1}. Try to conclude the story soon.` : `This is chapter ${currentChapter + 1}. Continue building toward conclusion.`}
+2. KEEP IT SHORT: 1-2 paragraphs (3-4 sentences MAX). No filler!
+3. Jump to the consequences FAST - keep momentum high
+4. Stories MUST have at least ${minimumChapters} chapters before ending
+5. Stories SHOULD end by chapter ${maximumChapters}
+6. ${shouldPreventEnding ? `Chapter ${currentChapter + 1}: DO NOT END. Provide 2-3 exciting choices.` : shouldEncourageEnding ? `Chapter ${currentChapter + 1}: Wrap up the story with a satisfying ending.` : `Chapter ${currentChapter + 1}: Keep it exciting and moving forward!`}
 
 Return ONLY valid JSON:
 {
-  "content": "The story text here IN THE SAME LANGUAGE",
-  "choices": [{"text": "Choice 1", "hint": "Hint 1"}, {"text": "Choice 2", "hint": "Hint 2"}],
+  "content": "SHORT chapter text (1-2 paragraphs MAX)",
+  "choices": [{"text": "Exciting choice 1", "hint": "Quick hint"}, {"text": "Exciting choice 2", "hint": "Quick hint"}],
   "isEnding": false,
   "endingType": null
 }`;
@@ -164,10 +165,10 @@ Return ONLY valid JSON:
         actualUserPrompt = `Story Title: ${storyTitle || "Adventure"}
 Previous part: ${previousContent}
 The reader chose: "${userChoice}"
-Continue the story in THE SAME LANGUAGE.`;
+Continue the story - show consequences FAST. Keep it SHORT (1-2 paragraphs). No filler!`;
       } else {
         actualUserPrompt = `Start a new story with this theme: ${storyContext}
-Create an engaging opening with 2-3 choices.`;
+Create a SHORT, CATCHY opening with 2-3 exciting choices.`;
       }
     }
 
@@ -185,7 +186,7 @@ Create an engaging opening with 2-3 choices.`;
           { role: "user", content: actualUserPrompt }
         ],
         temperature: 0.8,
-        max_tokens: 2000,
+        max_tokens: 600,
         stream: true, // Enable streaming
       }),
     });
