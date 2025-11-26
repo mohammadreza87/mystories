@@ -10,6 +10,8 @@ import { getUserSubscription, createCustomerPortalSession } from '../lib/subscri
 import UpgradeModal from './UpgradeModal';
 import { useToast } from './Toast';
 import { useShare } from '../hooks';
+import { LoadingState } from '../shared/components/LoadingState';
+import { ErrorState } from '../shared/components/ErrorState';
 
 interface ProfileProps {
   userId: string;
@@ -45,6 +47,7 @@ export function Profile({ userId, onSelectStory }: ProfileProps) {
   const [followingCount, setFollowingCount] = useState<number>(0);
   const [subscription, setSubscription] = useState<UserProfileType | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const handleSignOut = async () => {
     await signOut();
@@ -93,6 +96,7 @@ export function Profile({ userId, onSelectStory }: ProfileProps) {
       }
     } catch (error) {
       console.error('Error loading profile:', error);
+      setLoadError('Failed to load profile');
     }
   };
 
@@ -142,6 +146,7 @@ export function Profile({ userId, onSelectStory }: ProfileProps) {
       setCompletedStories(formatted);
     } catch (error) {
       console.error('Error loading completed stories:', error);
+      setLoadError('Failed to load stories');
     } finally {
       setLoading(false);
     }
@@ -153,6 +158,7 @@ export function Profile({ userId, onSelectStory }: ProfileProps) {
       setCreatedStories(stories);
     } catch (error) {
       console.error('Error loading created stories:', error);
+      setLoadError('Failed to load stories');
     }
   };
 
@@ -166,6 +172,7 @@ export function Profile({ userId, onSelectStory }: ProfileProps) {
       setFollowingCount(following);
     } catch (error) {
       console.error('Error loading follow counts:', error);
+      setLoadError('Failed to load followers');
     }
   };
 
@@ -193,6 +200,21 @@ export function Profile({ userId, onSelectStory }: ProfileProps) {
       showToast('Unable to share right now', 'error');
     }
   };
+
+  if (loading) {
+    return <LoadingState fullScreen message="Loading your profile..." size="lg" />;
+  }
+
+  if (loadError) {
+    return (
+      <ErrorState
+        fullScreen
+        title="Unable to load profile"
+        message={loadError}
+        onRetry={() => window.location.reload()}
+      />
+    );
+  }
 
   const handleToggleVisibility = async (storyId: string, currentVisibility: boolean) => {
     setUpdatingVisibilityId(storyId);

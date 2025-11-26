@@ -119,8 +119,8 @@ PROBLEMS:
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │  Feature: Auth                                         │ │
 │  │  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐ │ │
-│  │  │  Components  │  │    Store     │  │  Services   │ │ │
-│  │  │              │  │  (Zustand)   │  │             │ │ │
+│  │  │  Components  │  │  Provider    │  │  Services   │ │ │
+│  │  │              │  │ (Context)    │  │             │ │ │
 │  │  └──────────────┘  └──────────────┘  └─────────────┘ │ │
 │  └────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
@@ -135,7 +135,7 @@ PROBLEMS:
 └─────────────────────────────────────────────────────────────┘
 
 BENEFITS:
-✅ Single state management (Zustand only)
+✅ Single state management (Auth context + React Query caches)
 ✅ Small components (< 150 lines)
 ✅ Clear separation (UI / Logic / Data)
 ✅ No duplication (single source of truth)
