@@ -24,6 +24,7 @@ export const ErrorCodes = {
 
   // Business logic errors
   DAILY_LIMIT_REACHED: 'DAILY_LIMIT_REACHED',
+  RATE_LIMITED: 'RATE_LIMITED',
   SUBSCRIPTION_REQUIRED: 'SUBSCRIPTION_REQUIRED',
   GENERATION_FAILED: 'GENERATION_FAILED',
 
@@ -93,6 +94,17 @@ export const errors = {
 
   limitReached: (message: string = 'Daily story limit reached') =>
     error(ErrorCodes.DAILY_LIMIT_REACHED, message, 429),
+
+  rateLimited: (message: string = 'Rate limit exceeded', extraHeaders?: Record<string, string>) => {
+    const body = { error: { code: ErrorCodes.RATE_LIMITED, message } };
+    return new Response(JSON.stringify(body), {
+      status: 429,
+      headers: {
+        ...responseHeaders(),
+        ...extraHeaders,
+      },
+    });
+  },
 
   internal: (message: string = 'Internal server error', details?: unknown) =>
     error(ErrorCodes.INTERNAL_ERROR, message, 500, details),
