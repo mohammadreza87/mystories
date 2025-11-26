@@ -429,8 +429,8 @@ async function buildDeepseekPrompt(
     targetAudience ? `Audience: ${targetAudience}.` : "",
     artStyle ? `Art style: ${artStyle} (must be applied).` : "",
     styleReference ? `Style reference/hints: ${styleReference.slice(0, 200)}.` : "",
-    storyText ? `Story context: ${storyText.slice(0, 800)}.` : "",
-    `Current scene to render: ${basePrompt}.`,
+    storyText ? `Story context: ${storyText.slice(0, 600)}.` : "",
+    `Current scene to render: ${basePrompt.slice(0, 320)}.`,
     "Include: setting + time, key characters with visual traits and actions, mood/tone, lighting/color palette, composition/perspective.",
     "Constraints: one frame, no text, no speech bubbles, no aspect ratios, no camera jargon.",
     "Return only the final prompt."
@@ -602,13 +602,16 @@ Deno.serve(async (req: Request) => {
     const artStyleConfig = ART_STYLE_CONFIG[selectedArtStyle] || ART_STYLE_CONFIG.comic;
     const STYLE_PREFIX = artStyleConfig.promptPrefix;
 
+    // Keep scene text tight to avoid API length errors
+    const MAX_SCENE_CHARS = 320;
+    const sceneSlice = sanitizedPrompt.slice(0, MAX_SCENE_CHARS);
     const structuredPrompt = buildStructuredScenePrompt({
-      scene: sanitizedPrompt,
+      scene: sceneSlice,
       storyTitle,
       artStyle: selectedArtStyle,
       targetAudience,
-      styleReference: styleReference || STYLE_PREFIX,
-      storyContext: storyText || prompt
+      styleReference: (styleReference || STYLE_PREFIX).slice(0, 200),
+      storyContext: (storyText || prompt || "").slice(0, 400),
     });
 
     let fullPrompt: string;
@@ -621,6 +624,12 @@ Deno.serve(async (req: Request) => {
       } else {
         fullPrompt = `${STYLE_PREFIX}, softer colors, friendly character designs, whimsical atmosphere. ${structuredPrompt}. No text, no speech bubbles, no captions, no letters.`;
       }
+    }
+
+    // Leonardo rejects overlong prompts; clamp aggressively
+    const MAX_PROMPT_LENGTH = 650;
+    if (fullPrompt.length > MAX_PROMPT_LENGTH) {
+      fullPrompt = `${fullPrompt.slice(0, MAX_PROMPT_LENGTH)}…`;
     }
 
     console.log("Generating image with Leonardo AI, config:", {
