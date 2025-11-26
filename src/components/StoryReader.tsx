@@ -62,7 +62,8 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
   const [likesCount, setLikesCount] = useState(0);
   const [dislikesCount, setDislikesCount] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [chapterVideos, setChapterVideos] = useState<Record<string, { url: string | null; generating: boolean }>>({});
+  const [chapterVideos, setChapterVideos] = useState<Record<string, { url: string | null; generating: boolean; failed?: boolean }>>({});
+  const videoGenerationAttemptedRef = useRef<Set<string>>(new Set());
   const latestChapterRef = useRef<HTMLDivElement | null>(null);
   const wordTimerRef = useRef<NodeJS.Timeout | null>(null);
   const currentChapterIdRef = useRef<string | null>(null);
@@ -182,10 +183,14 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
 
     const latest = chapters[chapters.length - 1];
     const chapterId = latest.node.id;
-    const existing = chapterVideos[chapterId];
 
     if (latest.node.id === 'loading') return;
-    if (existing?.url || existing?.generating) return;
+
+    // Use ref to prevent race conditions - check if we've already attempted this chapter
+    if (videoGenerationAttemptedRef.current.has(chapterId)) return;
+
+    // Mark as attempted immediately to prevent duplicate calls
+    videoGenerationAttemptedRef.current.add(chapterId);
 
     setChapterVideos((prev) => ({
       ...prev,
@@ -208,10 +213,10 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
         showToast('Video generation failed. Please try again.', 'error');
         setChapterVideos((prev) => ({
           ...prev,
-          [chapterId]: { url: null, generating: false },
+          [chapterId]: { url: null, generating: false, failed: true },
         }));
       });
-  }, [chapters, chapterVideos, story?.title, story?.target_audience, subscriptionUsage?.features.video]);
+  }, [chapters, story?.title, story?.target_audience, subscriptionUsage?.features.video]);
 
   const generateUniqueNodeKey = (): string => {
     return `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -1111,9 +1116,11 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
                     ) : (
                       <button
                         onClick={async () => {
+                          const chapterId = chapter.node.id;
+                          // Allow manual retry even if auto-generation failed
                           setChapterVideos((prev) => ({
                             ...prev,
-                            [chapter.node.id]: { url: null, generating: true },
+                            [chapterId]: { url: null, generating: true, failed: false },
                           }));
                           try {
                             const videoUrl = await generateChapterVideo({
@@ -1123,21 +1130,25 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
                             });
                             setChapterVideos((prev) => ({
                               ...prev,
-                              [chapter.node.id]: { url: videoUrl, generating: false },
+                              [chapterId]: { url: videoUrl, generating: false },
                             }));
                           } catch (err) {
                             console.error('Video generation failed', err);
                             showToast('Video generation failed. Please try again.', 'error');
                             setChapterVideos((prev) => ({
                               ...prev,
-                              [chapter.node.id]: { url: null, generating: false },
+                              [chapterId]: { url: null, generating: false, failed: true },
                             }));
                           }
                         }}
                         disabled={chapterVideos[chapter.node.id]?.generating}
                         className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold py-3 rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                       >
-                        {chapterVideos[chapter.node.id]?.generating ? 'Generating video...' : 'Generate video for this chapter'}
+                        {chapterVideos[chapter.node.id]?.generating
+                          ? 'Generating video...'
+                          : chapterVideos[chapter.node.id]?.failed
+                            ? 'Retry video generation'
+                            : 'Generate video for this chapter'}
                       </button>
                     )}
                   </div>
