@@ -1,0 +1,2 @@
+[functions.og-story]
+verify_jwt = false
