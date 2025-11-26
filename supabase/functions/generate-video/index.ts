@@ -89,8 +89,12 @@ async function pollVideo(apiKey: string, motionId: string, attempts = 40, delayM
 }
 
 Deno.serve(async (req) => {
+  // Handle CORS preflight request
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
   }
 
   const authResponse = await authenticate(req);
