@@ -1,5 +1,5 @@
 /**
- * Centralized error handling for the MyStories application.
+ * Centralized error handling for the Next Tale application.
  * Provides consistent error types, handling, and user-facing messages.
  */
 
@@ -201,5 +201,5 @@ export function logError(
     ...additionalInfo,
   };
 
-  console.error('[MyStories Error]', errorInfo);
+  console.error('[Next Tale Error]', errorInfo);
 }

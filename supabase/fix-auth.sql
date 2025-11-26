@@ -85,12 +85,12 @@ INSERT INTO public.stories (
   is_public
 ) VALUES (
   '00000000-0000-0000-0000-000000000000',
-  'Welcome to MyStories',
+  'Welcome to Next Tale',
   '{
     "nodes": {
       "start": {
         "id": "start",
-        "text": "Welcome to MyStories! This is a demo story to show the platform is working.",
+        "text": "Welcome to Next Tale! This is a demo story to show the platform is working.",
         "choices": [
           {"text": "Learn more", "nextNode": "learn"},
           {"text": "Start creating", "nextNode": "create"}
@@ -98,7 +98,7 @@ INSERT INTO public.stories (
       },
       "learn": {
         "id": "learn",
-        "text": "MyStories lets you create interactive stories with branching paths.",
+        "text": "Next Tale lets you create interactive stories with branching paths.",
         "choices": [
           {"text": "The End", "nextNode": "end"}
         ]

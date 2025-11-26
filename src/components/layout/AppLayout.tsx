@@ -73,7 +73,7 @@ export function AppLayout() {
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 flex items-center justify-center z-40 shadow-lg">
         <div className="flex items-center gap-2">
           <Bird className="w-6 h-6" />
-          <span className="font-bold text-lg">MyStories</span>
+          <span className="font-bold text-lg">Next Tale</span>
         </div>
       </div>
 

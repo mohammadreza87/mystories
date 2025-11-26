@@ -1,14 +1,14 @@
-# MyStories - Architecture Review & Refactoring Proposal
+# Next Tale - Architecture Review & Refactoring Proposal
 
 **Date:** November 26, 2025  
 **Reviewer:** Senior React/TypeScript Architect  
-**Project:** MyStories - AI-Powered Interactive Storytelling Platform
+**Project:** Next Tale - AI-Powered Interactive Storytelling Platform
 
 ---
 
 ## Executive Summary
 
-MyStories is a well-structured React 18 + TypeScript application with modern tooling (Vite, React Query, Zustand). The codebase demonstrates good practices in many areas but suffers from **architectural inconsistencies**, **duplication**, and **mixed concerns** that will hinder scalability and maintainability.
+Next Tale is a well-structured React 18 + TypeScript application with modern tooling (Vite, React Query, Zustand). The codebase demonstrates good practices in many areas but suffers from **architectural inconsistencies**, **duplication**, and **mixed concerns** that will hinder scalability and maintainability.
 
 ### Overall Grade: **B- (75/100)**
 
@@ -560,7 +560,7 @@ src/
 
 ## Conclusion
 
-MyStories has a solid foundation but needs architectural refinement to scale. The proposed refactoring will:
+Next Tale has a solid foundation but needs architectural refinement to scale. The proposed refactoring will:
 
 ✅ **Reduce code by 20%** (eliminate duplication)  
 ✅ **Improve maintainability** (clear structure)  

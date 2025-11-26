@@ -1,4 +1,4 @@
--- Complete database setup for MyStories
+-- Complete database setup for Next Tale
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

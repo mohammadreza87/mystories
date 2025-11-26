@@ -1,4 +1,4 @@
-# MyStories - Refactoring Code Examples
+# Next Tale - Refactoring Code Examples
 
 This document provides concrete before/after code examples for the most critical refactorings.
 
@@ -791,7 +791,7 @@ export function StoryLibraryContainer({
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-3xl shadow-lg mb-3">
             <Bird className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">MyStories</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Next Tale</h1>
           <p className="text-sm text-gray-600">Discover your next adventure</p>
         </div>
 

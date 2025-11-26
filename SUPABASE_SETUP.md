@@ -1,4 +1,4 @@
-# Supabase Setup Guide for MyStories
+# Supabase Setup Guide for Next Tale
 
 ## 🔧 Quick Setup
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 MyStories Setup Script"
+echo "🚀 Next Tale Setup Script"
 echo "========================"
 
 # Check if Supabase CLI is installed

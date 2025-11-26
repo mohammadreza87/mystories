@@ -1,4 +1,4 @@
-# MyStories - Implementation Checklist
+# Next Tale - Implementation Checklist
 
 ## Updates (current state)
 - Config now lives in `src/config/index.ts` with `src/config.ts` re-exporting it; skip the previous split/merge instructions and use that source moving forward.

@@ -1,5 +1,5 @@
 /**
- * Custom React hooks for the MyStories application.
+ * Custom React hooks for the Next Tale application.
  *
  * These hooks encapsulate common patterns used across components,
  * promoting code reuse and separation of concerns.

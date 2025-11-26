@@ -49,7 +49,7 @@ export function Sidebar({ currentView, onNavigate }: SidebarProps) {
                 <Bird className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">MyStories</h2>
+          <h2 className="text-xl font-bold text-gray-900">Next Tale</h2>
                 <p className="text-xs text-gray-500">YA Interactive Adventures</p>
               </div>
             </div>

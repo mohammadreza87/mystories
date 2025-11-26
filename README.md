@@ -1,4 +1,4 @@
-# MyStories
+# Next Tale
 
 An AI-powered interactive storytelling platform that generates personalized, branching narratives with AI-generated illustrations and text-to-speech narration. Users can create, read, and share stories tailored for children (5-10), young adults (13-18), or adults (18+).
 

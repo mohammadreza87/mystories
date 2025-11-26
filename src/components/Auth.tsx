@@ -96,7 +96,7 @@ export function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps) {
       <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            Welcome to MyStories
+            Welcome to Next Tale
           </h1>
           <p className="text-gray-600">
             {isSignUp ? 'Create an account to start your YA journey' : 'Sign in to continue your story'}

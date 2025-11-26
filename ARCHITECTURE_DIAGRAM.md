@@ -1,4 +1,4 @@
-# MyStories - Architecture Diagrams
+# Next Tale - Architecture Diagrams
 
 ## Current Architecture (Before Refactoring)
 

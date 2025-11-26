@@ -1,7 +1,7 @@
 import { getConfig as getEnvConfig } from '../lib/env';
 
 /**
- * Centralized configuration for the MyStories application.
+ * Centralized configuration for the Next Tale application.
  * Uses a single, validated environment source to avoid duplicated config definitions.
  */
 

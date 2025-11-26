@@ -1,4 +1,4 @@
-# MyStories - Detailed Refactoring Plan
+# Next Tale - Detailed Refactoring Plan
 
 ## Phase 1: Foundation Fixes (Week 1)
 

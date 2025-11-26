@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Starting deployment process for MyStories..."
+echo "🚀 Starting deployment process for Next Tale..."
 
 # 1. Run database migrations
 echo "📊 Running database migrations..."
