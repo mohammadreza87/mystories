@@ -3,6 +3,7 @@ import { ArrowLeft, Clock, Heart, ThumbsDown, Play, Loader, Users, CheckCircle2 
 import { getStory } from '../lib/storyService';
 import { supabase } from '../lib/supabase';
 import type { Story } from '../lib/types';
+import { useToast } from './Toast';
 
 interface StoryDetailProps {
   storyId: string;
@@ -12,6 +13,7 @@ interface StoryDetailProps {
 }
 
 export function StoryDetail({ storyId, userId, onBack, onStartStory }: StoryDetailProps) {
+  const { showToast } = useToast();
   const [story, setStory] = useState<Story | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasLiked, setHasLiked] = useState(false);
@@ -79,7 +81,7 @@ export function StoryDetail({ storyId, userId, onBack, onStartStory }: StoryDeta
 
   const handleReaction = async (isLike: boolean) => {
     if (!userId) {
-      alert('Please sign in to react to stories');
+      showToast('Please sign in to react to stories', 'warning');
       return;
     }
 

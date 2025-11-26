@@ -5,6 +5,7 @@ import { trackChapterRead, trackStoryCompletion } from '../lib/pointsService';
 import { progressQuest } from '../lib/questsService';
 import { supabase } from '../lib/supabase';
 import type { StoryNode, StoryChoice, Story, StoryReaction } from '../lib/types';
+import { useToast } from './Toast';
 
 interface StoryReaderProps {
   storyId: string;
@@ -21,6 +22,7 @@ interface StoryChapter {
 }
 
 export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
+  const { showToast } = useToast();
   const [chapters, setChapters] = useState<StoryChapter[]>([]);
   const [pathTaken, setPathTaken] = useState<string[]>(['start']);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -1092,7 +1094,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
                 }`}
                 onClick={async () => {
                   if (!userId) {
-                    alert('Please sign in to react to stories');
+                    showToast('Please sign in to react to stories', 'warning');
                     return;
                   }
                   try {
@@ -1113,6 +1115,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
                     }
                   } catch (error) {
                     console.error('Error handling reaction:', error);
+                    showToast('Failed to save reaction', 'error');
                   }
                 }}
               >
@@ -1128,7 +1131,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
                 }`}
                 onClick={async () => {
                   if (!userId) {
-                    alert('Please sign in to react to stories');
+                    showToast('Please sign in to react to stories', 'warning');
                     return;
                   }
                   try {
@@ -1149,6 +1152,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
                     }
                   } catch (error) {
                     console.error('Error handling reaction:', error);
+                    showToast('Failed to save reaction', 'error');
                   }
                 }}
               >
@@ -1175,9 +1179,10 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
                   } else {
                     try {
                       await navigator.clipboard.writeText(shareUrl);
-                      alert('Link copied to clipboard!');
+                      showToast('Link copied to clipboard!', 'success');
                     } catch (error) {
                       console.error('Error copying to clipboard:', error);
+                      showToast('Failed to copy link', 'error');
                     }
                   }
                 }}

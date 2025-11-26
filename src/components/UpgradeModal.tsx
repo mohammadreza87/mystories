@@ -1,6 +1,7 @@
 import { X, Sparkles, Zap, Crown } from 'lucide-react';
 import { useState } from 'react';
 import { createCheckoutSession, STRIPE_PRICES } from '../lib/subscriptionService';
+import { useToast } from './Toast';
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -8,6 +9,7 @@ interface UpgradeModalProps {
 }
 
 export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('monthly');
 
@@ -20,11 +22,11 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
       if (url) {
         window.location.href = url;
       } else {
-        alert('Failed to start checkout. Please try again.');
+        showToast('Failed to start checkout. Please try again.', 'error');
       }
     } catch (error) {
       console.error('Upgrade error:', error);
-      alert('An error occurred. Please try again.');
+      showToast('An error occurred. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
