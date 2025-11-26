@@ -1,9 +1,18 @@
+/**
+ * Public profile view component.
+ * Refactored to use useFollow and useShare hooks instead of inline handling.
+ */
+
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Loader, Clock, Share2, UserPlus, UserMinus } from 'lucide-react';
+import { ArrowLeft, Clock, Share2, UserPlus, UserMinus, Loader } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Story, UserProfile } from '../lib/types';
 import { getPublicUserStories } from '../lib/storyService';
-import { followUser, unfollowUser, isFollowing } from '../lib/followService';
+import { useAuth } from '../lib/authContext';
+import { useFollow } from '../hooks/useFollow';
+import { useShare } from '../hooks/useShare';
+import { useToast } from './Toast';
+import { LoadingState } from '../shared/components/LoadingState';
 
 interface PublicProfileProps {
   profileUserId: string;
@@ -12,72 +21,62 @@ interface PublicProfileProps {
 }
 
 export function PublicProfile({ profileUserId, onBack, onSelectStory }: PublicProfileProps) {
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const { shareStory } = useShare();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
-  const [following, setFollowing] = useState(false);
-  const [followLoading, setFollowLoading] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // Use the shared follow hook instead of inline handling
+  const {
+    isFollowing: following,
+    followersCount,
+    loading: followLoading,
+    toggleFollow,
+  } = useFollow(user?.id, profileUserId);
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (mounted) setCurrentUserId(session?.user?.id || null);
 
+    const loadProfile = async () => {
+      try {
         const { data: prof } = await supabase
           .from('user_profiles')
-          .select('display_name, bio, avatar_url, username, followers_count, following_count')
+          .select('display_name, bio, avatar_url, username, following_count')
           .eq('id', profileUserId)
           .maybeSingle();
+
         if (!mounted) return;
         setProfile(prof as UserProfile | null);
 
         const publicStories = await getPublicUserStories(profileUserId);
         if (!mounted) return;
         setStories(publicStories);
-
-        if (session?.user?.id && session.user.id !== profileUserId) {
-          const followStatus = await isFollowing(profileUserId);
-          if (mounted) setFollowing(followStatus);
-        }
       } catch (error) {
         console.error('Error loading public profile', error);
       } finally {
         if (mounted) setLoading(false);
       }
-    })();
+    };
+
+    loadProfile();
+
     return () => {
       mounted = false;
     };
   }, [profileUserId]);
 
-  const handleFollowToggle = async () => {
-    setFollowLoading(true);
-    try {
-      if (following) {
-        await unfollowUser(profileUserId);
-        setFollowing(false);
-        setProfile(prev => prev ? { ...prev, followers_count: (prev.followers_count || 1) - 1 } : prev);
-      } else {
-        await followUser(profileUserId);
-        setFollowing(true);
-        setProfile(prev => prev ? { ...prev, followers_count: (prev.followers_count || 0) + 1 } : prev);
-      }
-    } catch (error) {
-      console.error('Error toggling follow:', error);
-    } finally {
-      setFollowLoading(false);
+  const handleShare = async (storyId: string, storyTitle: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const success = await shareStory(storyId, storyTitle);
+    if (!success) {
+      showToast('Unable to share right now', 'error');
     }
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-20 flex items-center justify-center">
-        <Loader className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
-    );
+    return <LoadingState fullScreen message="Loading profile..." />;
   }
 
   return (
@@ -117,7 +116,7 @@ export function PublicProfile({ profileUserId, onBack, onSelectStory }: PublicPr
 
           <div className="flex items-center gap-6 mb-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{profile?.followers_count || 0}</div>
+              <div className="text-2xl font-bold text-gray-900">{followersCount}</div>
               <div className="text-xs text-gray-600">Followers</div>
             </div>
             <div className="text-center">
@@ -130,9 +129,9 @@ export function PublicProfile({ profileUserId, onBack, onSelectStory }: PublicPr
             </div>
           </div>
 
-          {currentUserId && currentUserId !== profileUserId && (
+          {user?.id && user.id !== profileUserId && (
             <button
-              onClick={handleFollowToggle}
+              onClick={toggleFollow}
               disabled={followLoading}
               className={`w-full py-3 px-4 rounded-2xl font-semibold transition-all flex items-center justify-center gap-2 ${
                 following
@@ -183,10 +182,7 @@ export function PublicProfile({ profileUserId, onBack, onSelectStory }: PublicPr
                     </div>
                     <button
                       className="p-2 text-blue-600 hover:text-blue-800 rounded-xl hover:bg-blue-50 transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigator.clipboard?.writeText(`${window.location.origin}?story=${story.id}`).catch(() => null);
-                      }}
+                      onClick={(e) => handleShare(story.id, story.title, e)}
                     >
                       <Share2 className="w-4 h-4" />
                     </button>
