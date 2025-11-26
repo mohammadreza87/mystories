@@ -46,7 +46,86 @@ interface VideoRequest {
   prompt: string;
   artStyle?: 'cartoon' | 'comic' | 'realistic';
   motionStrength?: number; // Kept for backward compatibility but not used in text-to-video
-  aspectRatio?: string; // e.g., "16:9"
+  aspectRatio?: '16:9' | '9:16' | '2:3' | '4:5'; // Supported aspect ratios
+}
+
+// Video dimension mappings for different aspect ratios (per Leonardo API docs)
+const VIDEO_DIMENSIONS: Record<string, { width: number; height: number }> = {
+  '16:9': { width: 832, height: 480 },
+  '9:16': { width: 480, height: 832 },
+  '2:3': { width: 512, height: 768 },
+  '4:5': { width: 576, height: 720 },
+};
+
+// List of sensitive terms to sanitize from prompts (same as generate-image)
+const SENSITIVE_TERMS: Record<string, string> = {
+  // Historical figures - replace with generic descriptions
+  'kennedy': 'a distinguished political leader',
+  'jfk': 'a distinguished political leader',
+  'hitler': 'a stern military leader',
+  'nazi': 'authoritarian regime',
+  'nazis': 'authoritarian soldiers',
+  'holocaust': 'historical tragedy',
+  'stalin': 'a cold authoritarian leader',
+  'mussolini': 'a dictatorial figure',
+  'robespierre': 'a revolutionary leader',
+  'guillotine': 'execution platform',
+  'mao': 'an eastern political leader',
+  'pol pot': 'a ruthless leader',
+  'bin laden': 'a bearded extremist figure',
+  'isis': 'militant group',
+  'al qaeda': 'terrorist organization',
+  'kkk': 'hooded figures',
+  'ku klux': 'hooded figures',
+  // Violence and injury terms
+  'assassination': 'fateful moment',
+  'assassin': 'attacker',
+  'blood': 'crimson',
+  'bloody': 'intense',
+  'bleeding': 'wounded',
+  'murder': 'dramatic confrontation',
+  'killing': 'intense conflict',
+  'torture': 'interrogation',
+  'execution': 'fateful moment',
+  'terrorist': 'extremist',
+  'terrorism': 'extremism',
+  'corpse': 'fallen figure',
+  'dead': 'fallen',
+  'death': 'fate',
+  'dying': 'fading',
+  'gun': 'weapon',
+  'rifle': 'long weapon',
+  'pistol': 'small weapon',
+  'shoot': 'strike',
+  'shooting': 'attack',
+  'shot': 'struck',
+  'bomb': 'explosion',
+  'bombing': 'explosive event',
+  // Political symbols
+  'swastika': 'authoritarian symbol',
+  'confederate': 'historical faction',
+};
+
+/**
+ * Sanitize prompt to avoid content moderation issues
+ */
+function sanitizePrompt(prompt: string): string {
+  let sanitized = prompt;
+
+  // Replace sensitive terms with safer alternatives
+  for (const [term, replacement] of Object.entries(SENSITIVE_TERMS)) {
+    const regex = new RegExp(`\\b${term}\\b`, 'gi');
+    sanitized = sanitized.replace(regex, replacement);
+  }
+
+  // Additional cleanup for common violent phrases
+  sanitized = sanitized
+    .replace(/\b(scream|screaming|screamed)\b/gi, 'cried out')
+    .replace(/\b(pain|painful|pained)\b/gi, 'sensation')
+    .replace(/\b(wound|wounded|wounds)\b/gi, 'injury')
+    .replace(/\b(kill|killed|kills)\b/gi, 'fell');
+
+  return sanitized;
 }
 
 interface LeonardoTextToVideoJob {
@@ -72,14 +151,17 @@ const corsHeaders = CORS_HEADERS;
 async function createTextToVideoJob(
   apiKey: string,
   prompt: string,
-  styleId: string | null
+  styleId: string | null,
+  dimensions: { width: number; height: number }
 ): Promise<string> {
   const requestBody: Record<string, unknown> = {
     prompt,
-    model: "MOTION2", // Fast and reliable model
+    width: dimensions.width,
+    height: dimensions.height,
     resolution: "RESOLUTION_720", // Good quality without being too slow
     isPublic: false,
     promptEnhance: true, // Let Leonardo enhance the prompt for better results
+    frameInterpolation: true, // Smooth video effect
   };
 
   // Add style if provided
@@ -196,14 +278,22 @@ Deno.serve(async (req) => {
     const artStyle = body.artStyle || 'comic'; // Default to comic style
     const styleConfig = ART_STYLE_CONFIG[artStyle] || ART_STYLE_CONFIG.comic;
 
+    // Get video dimensions based on aspect ratio (default to 16:9)
+    const aspectRatio = body.aspectRatio || '16:9';
+    const dimensions = VIDEO_DIMENSIONS[aspectRatio] || VIDEO_DIMENSIONS['16:9'];
+
+    // Sanitize the prompt to avoid content moderation issues
+    const sanitizedUserPrompt = sanitizePrompt(body.prompt);
+
     // Build the video prompt with style prefix
-    const videoPrompt = `${styleConfig.promptPrefix}. ${body.prompt}. No text, no watermarks, cinematic motion.`;
+    const videoPrompt = `${styleConfig.promptPrefix}. ${sanitizedUserPrompt}. No text, no watermarks, cinematic motion.`;
 
     console.log("Creating text-to-video with art style:", artStyle);
+    console.log("Aspect ratio:", aspectRatio, "Dimensions:", dimensions);
     console.log("Full prompt:", videoPrompt);
 
     // Step 1: Create text-to-video job
-    const generationId = await createTextToVideoJob(apiKey, videoPrompt, styleConfig.styleId);
+    const generationId = await createTextToVideoJob(apiKey, videoPrompt, styleConfig.styleId, dimensions);
     console.log("Text-to-video generation started:", generationId);
 
     // Step 2: Poll for completion

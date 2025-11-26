@@ -249,6 +249,10 @@ function detectComicStyle(styleReference: string): string | null {
 // List of sensitive terms to sanitize from prompts
 const SENSITIVE_TERMS: Record<string, string> = {
   // Historical figures - replace with generic descriptions
+  'kennedy': 'a distinguished political leader',
+  'jfk': 'a distinguished political leader',
+  'john f kennedy': 'a distinguished political leader',
+  'john fitzgerald kennedy': 'a distinguished political leader',
   'hitler': 'a stern military leader',
   'nazi': 'authoritarian regime',
   'nazis': 'authoritarian soldiers',
