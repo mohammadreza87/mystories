@@ -60,7 +60,7 @@ export async function getSubscriptionUsage(userId: string): Promise<Subscription
 
   const tierLimits = {
     free: { storiesPerDay: 1, completionsPerDay: 1, audio: false, video: false },
-    basic: { storiesPerDay: 5, completionsPerDay: 5, audio: false, video: false },
+    basic: { storiesPerDay: 10, completionsPerDay: 10, audio: false, video: false },
     pro: { storiesPerDay: 20, completionsPerDay: 20, audio: true, video: false },
     max: { storiesPerDay: 40, completionsPerDay: 40, audio: true, video: true },
   } as const;

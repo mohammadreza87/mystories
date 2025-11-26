@@ -52,7 +52,7 @@ export const plans: PlanDefinition[] = [
     badge: 'Best value',
     features: [
       'Everything in Free',
-      '5 stories per day',
+      '10 stories per day',
       'Edit text, choices, images',
       'Up to 12 chapters/story',
       'Keep stories private forever',

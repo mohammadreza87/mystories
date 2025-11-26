@@ -20,6 +20,7 @@ interface ImageRequest {
   isAdultComic?: boolean;
   isAdultContent?: boolean;
   targetAudience?: 'children' | 'young_adult' | 'adult';
+  artStyle?: 'cartoon' | 'comic' | 'realistic';
   modelId?: string;
 }
 
@@ -83,6 +84,28 @@ const COMIC_STYLE_CONFIG: Record<string, { modelId: string; styleUUID: string; c
     modelId: LEONARDO_MODELS.phoenix,
     styleUUID: LEONARDO_STYLES.creative,
     contrast: 3.5,
+  },
+};
+
+// User-facing art style configurations
+const ART_STYLE_CONFIG: Record<string, { modelId: string; styleUUID: string; contrast: number; promptPrefix: string }> = {
+  cartoon: {
+    modelId: LEONARDO_MODELS.phoenix,
+    styleUUID: LEONARDO_STYLES.vibrant,
+    contrast: 3,
+    promptPrefix: 'Colorful cartoon illustration style, fun and playful, bold outlines, vibrant colors, Pixar-inspired, friendly character designs, whimsical atmosphere',
+  },
+  comic: {
+    modelId: LEONARDO_MODELS.kinoXL,
+    styleUUID: LEONARDO_STYLES.cinematic,
+    contrast: 4,
+    promptPrefix: 'Professional comic book art style, graphic novel illustration, bold ink outlines, cel-shaded coloring, dramatic shadows, dynamic composition, cinematic panel layout, high contrast, detailed backgrounds, professional sequential art quality',
+  },
+  realistic: {
+    modelId: LEONARDO_MODELS.lucidOrigin,
+    styleUUID: LEONARDO_STYLES.cinematicCloseUp,
+    contrast: 3.5,
+    promptPrefix: 'Photorealistic cinematic style, movie poster quality, hyperrealistic, dramatic lighting, film-quality visuals, detailed textures, professional photography aesthetic, award-winning cinematography',
   },
 };
 
@@ -375,7 +398,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     console.log("Received request body:", body);
 
-    const { prompt, styleReference, isAdultComic, isAdultContent, targetAudience, modelId }: ImageRequest = body;
+    const { prompt, styleReference, isAdultComic, isAdultContent, targetAudience, artStyle, modelId }: ImageRequest = body;
 
     // Determine if this is adult content that needs sanitization
     const isAdult = isAdultContent || isAdultComic || targetAudience === 'adult' || targetAudience === 'young_adult';
@@ -411,17 +434,21 @@ Deno.serve(async (req: Request) => {
       styleReference.toLowerCase().includes('cyberpunk')
     ));
 
-    // Use consistent comic book style settings for all images
-    let generationConfig: GenerationConfig = {
-      modelId: modelId || LEONARDO_MODELS.kinoXL, // Kino XL is best for cinematic comic style
-      styleUUID: LEONARDO_STYLES.cinematic,
-      contrast: 4, // Higher contrast for comic book look
-      width: 1024,
-      height: 1024,
-    };
+    // Use art style configuration if provided, otherwise fallback to comic style detection
+    let generationConfig: GenerationConfig;
+    let selectedArtStyle = artStyle || 'comic'; // Default to comic style
 
-    // Adjust based on specific comic style if provided
-    if (styleReference) {
+    if (artStyle && ART_STYLE_CONFIG[artStyle]) {
+      const styleConfig = ART_STYLE_CONFIG[artStyle];
+      generationConfig = {
+        modelId: modelId || styleConfig.modelId,
+        styleUUID: styleConfig.styleUUID,
+        contrast: styleConfig.contrast,
+        width: 1024,
+        height: 1024,
+      };
+    } else if (styleReference) {
+      // Fallback to comic style detection for backward compatibility
       const comicStyle = detectComicStyle(styleReference);
       if (comicStyle && COMIC_STYLE_CONFIG[comicStyle]) {
         const styleConfig = COMIC_STYLE_CONFIG[comicStyle];
@@ -432,7 +459,26 @@ Deno.serve(async (req: Request) => {
           width: 1024,
           height: 1024,
         };
+      } else {
+        // Default to comic style
+        generationConfig = {
+          modelId: modelId || LEONARDO_MODELS.kinoXL,
+          styleUUID: LEONARDO_STYLES.cinematic,
+          contrast: 4,
+          width: 1024,
+          height: 1024,
+        };
       }
+    } else {
+      // Default to selected art style config
+      const styleConfig = ART_STYLE_CONFIG[selectedArtStyle];
+      generationConfig = {
+        modelId: modelId || styleConfig.modelId,
+        styleUUID: styleConfig.styleUUID,
+        contrast: styleConfig.contrast,
+        width: 1024,
+        height: 1024,
+      };
     }
 
     // Build the prompt with sanitization for adult content
@@ -442,17 +488,22 @@ Deno.serve(async (req: Request) => {
     // Apply sanitization for adult content to avoid content moderation issues
     const sanitizedPrompt = isAdult ? buildSafeImagePrompt(rawPrompt, true) : rawPrompt;
 
-    // Universal comic book art style prefix for consistency
-    const COMIC_STYLE_PREFIX = `Professional comic book art style, graphic novel illustration, bold ink outlines, cel-shaded coloring, dramatic shadows, dynamic composition, cinematic panel layout, high contrast, vibrant colors, detailed backgrounds, professional sequential art quality`;
+    // Get the art style prefix based on selected style
+    const artStyleConfig = ART_STYLE_CONFIG[selectedArtStyle] || ART_STYLE_CONFIG.comic;
+    const STYLE_PREFIX = artStyleConfig.promptPrefix;
 
     let fullPrompt: string;
 
     if (isComic || isAdult) {
-      // Adult/comic content - consistent comic book style
-      fullPrompt = `${COMIC_STYLE_PREFIX}. Scene: ${sanitizedPrompt}. No text, no speech bubbles, no captions, no letters.`;
+      // Adult content - use selected art style
+      fullPrompt = `${STYLE_PREFIX}. Scene: ${sanitizedPrompt}. No text, no speech bubbles, no captions, no letters.`;
     } else {
-      // Children's content - still comic style but softer
-      fullPrompt = `${COMIC_STYLE_PREFIX}, softer colors, friendly character designs, whimsical atmosphere. Scene: ${rawPrompt}. No text, no speech bubbles, no captions, no letters.`;
+      // Children's content - use selected art style with softer adjustments for non-realistic
+      if (selectedArtStyle === 'realistic') {
+        fullPrompt = `${STYLE_PREFIX}, family-friendly, warm lighting. Scene: ${rawPrompt}. No text, no speech bubbles, no captions, no letters.`;
+      } else {
+        fullPrompt = `${STYLE_PREFIX}, softer colors, friendly character designs, whimsical atmosphere. Scene: ${rawPrompt}. No text, no speech bubbles, no captions, no letters.`;
+      }
     }
 
     console.log("Generating image with Leonardo AI, config:", {
