@@ -77,6 +77,10 @@ export interface StoryNode {
   image_url?: string | null;
   image_prompt?: string | null;
   audio_url?: string | null;
+  video_url?: string | null;
+  video_status?: string | null;
+  video_error?: string | null;
+  video_generation_id?: string | null;
 }
 
 export interface StoryChoice {

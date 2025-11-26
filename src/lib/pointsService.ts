@@ -30,7 +30,7 @@ export async function trackChapterRead(
         }
       );
 
-    if (progressError) {
+    if (progressError && progressError.code !== '42501') {
       console.error('Error tracking reading progress:', progressError);
     }
 

@@ -230,6 +230,31 @@ export async function updateNodeAudio(nodeId: string, audioUrl: string | null): 
   if (error) throw error;
 }
 
+export async function updateNodeVideo(
+  nodeId: string,
+  options: {
+    videoUrl?: string | null;
+    status?: 'pending' | 'complete' | 'failed';
+    error?: string | null;
+    generationId?: string | null;
+  }
+): Promise<void> {
+  const payload: Record<string, unknown> = {};
+  if (options.videoUrl !== undefined) payload.video_url = options.videoUrl;
+  if (options.status !== undefined) payload.video_status = options.status;
+  if (options.error !== undefined) payload.video_error = options.error;
+  if (options.generationId !== undefined) payload.video_generation_id = options.generationId;
+
+  if (Object.keys(payload).length === 0) return;
+
+  const { error } = await supabase
+    .from('story_nodes')
+    .update(payload)
+    .eq('id', nodeId);
+
+  if (error) throw error;
+}
+
 // ============================================================================
 // User Progress
 // ============================================================================

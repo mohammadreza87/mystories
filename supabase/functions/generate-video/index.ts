@@ -197,7 +197,12 @@ async function createTextToVideoJob(
     throw new Error(`Leonardo API error: ${errorMsg}`);
   }
 
-  const generationId = data.textToVideoGenerationJob?.generationId;
+  const generationJob = data.textToVideoGenerationJob;
+  if (generationJob?.apiCreditCost !== undefined) {
+    console.log("Leonardo apiCreditCost:", generationJob.apiCreditCost);
+  }
+
+  const generationId = generationJob?.generationId;
   if (!generationId) {
     console.error("Unexpected Leonardo response structure:", JSON.stringify(data));
     throw new Error("No generationId returned from Leonardo - check API credits or account status");
@@ -316,9 +321,11 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("Video generation error:", error);
-    return new Response(JSON.stringify({ error: (error as Error).message || "Video generation failed" }), {
-      status: 500,
+    const message = (error as Error).message || "Video generation failed";
+    console.error("Video generation error:", message);
+    const status = message.includes("No generationId returned") ? 502 : 500;
+    return new Response(JSON.stringify({ error: message }), {
+      status,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

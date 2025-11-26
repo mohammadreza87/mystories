@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, Pause, RotateCcw, Sparkles, Loader, User, ThumbsUp, ThumbsDown, Share2 } from 'lucide-react';
-import { getStoryNode, getNodeChoices, saveProgress, updateNodeImage, updateNodeAudio, createStoryNode, createStoryChoice, getStory, getStoryGenerationStatus, getUserReaction, addReaction, updateReaction, removeReaction } from '../lib/storyService';
+import { getStoryNode, getNodeChoices, saveProgress, updateNodeImage, updateNodeAudio, updateNodeVideo, createStoryNode, createStoryChoice, getStory, getStoryGenerationStatus, getUserReaction, addReaction, updateReaction, removeReaction } from '../lib/storyService';
 import { trackChapterRead, trackStoryCompletion } from '../lib/pointsService';
 import { progressQuest } from '../lib/questsService';
 import { supabase } from '../lib/supabase';
@@ -23,6 +23,13 @@ const getArtStyleFromAudience = (targetAudience?: 'children' | 'young_adult' | '
     default:
       return 'comic'; // Default to comic style
   }
+};
+
+const SHORT_START_MAX_WORDS = 220;
+const shortenStartContent = (content: string, maxWords: number = SHORT_START_MAX_WORDS) => {
+  const words = content.trim().split(/\s+/);
+  if (words.length <= maxWords) return content;
+  return `${words.slice(0, maxWords).join(' ')}…`;
 };
 
 interface StoryReaderProps {
@@ -68,6 +75,21 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
   const wordTimerRef = useRef<NodeJS.Timeout | null>(null);
   const currentChapterIdRef = useRef<string | null>(null);
   const hasUserInteractedRef = useRef<boolean>(false);
+  const isStoryOwner = story?.created_by && userId ? story.created_by === userId : false;
+  const seedChapterVideoFromNode = (node: StoryNode) => {
+    if (node.video_url) {
+      setChapterVideos((prev) => ({
+        ...prev,
+        [node.id]: { url: node.video_url, generating: false },
+      }));
+      videoGenerationAttemptedRef.current.add(node.id);
+    } else if (node.video_status === 'failed') {
+      setChapterVideos((prev) => ({
+        ...prev,
+        [node.id]: { url: null, generating: false, failed: true },
+      }));
+    }
+  };
 
   useEffect(() => {
     initializeStory();
@@ -179,12 +201,26 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
 
   // Auto-generate chapter video for Max plan users when a chapter is first loaded
   useEffect(() => {
-    if (!subscriptionUsage?.features.video || chapters.length === 0) return;
+    if (!subscriptionUsage?.features.video || chapters.length === 0 || !userId) return;
+    if (!isStoryOwner) return; // Only allow owners to auto-generate videos for their stories
 
     const latest = chapters[chapters.length - 1];
     const chapterId = latest.node.id;
 
     if (latest.node.id === 'loading') return;
+
+    const storedVideoUrl = (latest.node as StoryNode).video_url;
+    const storedStatus = (latest.node as StoryNode).video_status;
+
+    if (storedVideoUrl) {
+      seedChapterVideoFromNode(latest.node);
+      return;
+    }
+
+    if (storedStatus === 'failed' || storedStatus === 'pending') {
+      // Do not auto-regenerate to avoid credit drain; allow manual retry from UI.
+      return;
+    }
 
     // Use ref to prevent race conditions - check if we've already attempted this chapter
     if (videoGenerationAttemptedRef.current.has(chapterId)) return;
@@ -197,26 +233,30 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
       [chapterId]: { url: null, generating: true },
     }));
 
+    updateNodeVideo(chapterId, { status: 'pending', error: null }).catch(() => null);
+
     generateChapterVideo({
       prompt: `${story?.title || 'Story'} - ${latest.node.content.slice(0, 400)}`,
       artStyle: getArtStyleFromAudience(story?.target_audience),
       aspectRatio: '16:9',
     })
-      .then((videoUrl) => {
+      .then(async (videoUrl) => {
         setChapterVideos((prev) => ({
           ...prev,
           [chapterId]: { url: videoUrl, generating: false },
         }));
+        await updateNodeVideo(chapterId, { videoUrl, status: 'complete', error: null });
       })
-      .catch((err) => {
+      .catch(async (err) => {
         console.error('Video generation failed', err);
         showToast('Video generation failed. Please try again.', 'error');
         setChapterVideos((prev) => ({
           ...prev,
           [chapterId]: { url: null, generating: false, failed: true },
         }));
+        await updateNodeVideo(chapterId, { status: 'failed', error: (err as Error).message?.slice(0, 500) || 'Video generation failed' });
       });
-  }, [chapters, story?.title, story?.target_audience, subscriptionUsage?.features.video]);
+  }, [chapters, story?.title, story?.target_audience, subscriptionUsage?.features.video, userId]);
 
   const generateUniqueNodeKey = (): string => {
     return `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -325,11 +365,12 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
       if (!node && currentStory?.story_context) {
         setIsGenerating(true);
         const generatedStory = await generateStory(currentStory.story_context);
+        const trimmedContent = shortenStartContent(generatedStory.content);
 
         node = await createStoryNode(
           storyId,
           nodeKey,
-          generatedStory.content,
+          trimmedContent,
           generatedStory.isEnding,
           generatedStory.endingType,
           0,
@@ -367,13 +408,14 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
         setIsGenerating(false);
 
         const chapter: StoryChapter = {
-          node,
+          node: { ...node, content: trimmedContent },
           choices: placeholderChoices,
           imageUrl: currentStory.cover_image_url,
           generatingImage: false
         };
 
         setChapters([chapter]);
+        seedChapterVideoFromNode(node);
         setLoading(false);
         return;
       }
@@ -392,8 +434,10 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
       const shouldUseCoverImage = isFirstChapter && currentStory?.cover_image_url;
       const existingNodeImage = node.image_url;
 
+      const adjustedNode = isFirstChapter ? { ...node, content: shortenStartContent(node.content) } : node;
+
       const chapter: StoryChapter = {
-        node,
+        node: adjustedNode,
         choices: nodeChoices,
         imageUrl: shouldUseCoverImage ? currentStory.cover_image_url : existingNodeImage,
         generatingImage: false // Don't show loading state, just show content immediately
@@ -401,6 +445,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
 
       console.log('Setting chapter with choices:', chapter.choices.length);
       setChapters([chapter]);
+      seedChapterVideoFromNode(adjustedNode);
 
       if (userId) {
         await trackChapterRead(userId, storyId, node.id, currentStory?.created_by || null);
@@ -546,6 +591,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
         };
 
       setChapters([...updatedChapters, newChapter]);
+      seedChapterVideoFromNode(newNode);
       setIsGenerating(false);
 
         if (userId) {
@@ -640,6 +686,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
           };
 
           setChapters([...updatedChapters, newChapter]);
+          seedChapterVideoFromNode(choice.to_node);
           setIsGenerating(false);
         } catch (error) {
           console.error('Error generating choices for node:', error);
@@ -651,6 +698,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
             imageUrl: existingImageUrl,
             generatingImage: false
           }]);
+          seedChapterVideoFromNode(choice.to_node);
         }
       } else {
         const existingImageUrl = choice.to_node.image_url;
@@ -662,6 +710,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
         };
 
         setChapters([...updatedChapters, newChapter]);
+        seedChapterVideoFromNode(choice.to_node);
       }
 
       if (userId) {
@@ -1107,13 +1156,31 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
 
                 {subscriptionUsage?.features.video && (
                   <div className="mt-6 mb-6">
-                    {chapterVideos[chapter.node.id]?.url ? (
+                    {(() => {
+                      const videoEntry = chapterVideos[chapter.node.id];
+                      const resolvedVideoUrl = videoEntry?.url ?? chapter.node.video_url;
+                      const isVideoGenerating = videoEntry?.generating || chapter.node.video_status === 'pending';
+                      const videoFailed = videoEntry?.failed || chapter.node.video_status === 'failed';
+
+                      if (resolvedVideoUrl) {
+                        return (
                       <video
                         controls
                         className="w-full rounded-2xl shadow-lg"
-                        src={chapterVideos[chapter.node.id]?.url || undefined}
+                          src={resolvedVideoUrl || undefined}
                       />
-                    ) : (
+                        );
+                      }
+
+                      if (!isStoryOwner) {
+                        return (
+                          <div className="w-full bg-gray-50 text-gray-600 border border-gray-200 rounded-xl px-4 py-3 text-center">
+                            Video generation is available only to the story owner. Any saved video will appear here.
+                          </div>
+                        );
+                      }
+
+                      return (
                       <button
                         onClick={async () => {
                           const chapterId = chapter.node.id;
@@ -1122,6 +1189,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
                             ...prev,
                             [chapterId]: { url: null, generating: true, failed: false },
                           }));
+                          await updateNodeVideo(chapterId, { status: 'pending', error: null });
                           try {
                             const videoUrl = await generateChapterVideo({
                               prompt: `${story?.title || 'Story'} - ${chapter.node.content.slice(0, 400)}`,
@@ -1132,6 +1200,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
                               ...prev,
                               [chapterId]: { url: videoUrl, generating: false },
                             }));
+                            await updateNodeVideo(chapterId, { videoUrl, status: 'complete', error: null });
                           } catch (err) {
                             console.error('Video generation failed', err);
                             showToast('Video generation failed. Please try again.', 'error');
@@ -1139,18 +1208,20 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
                               ...prev,
                               [chapterId]: { url: null, generating: false, failed: true },
                             }));
+                            await updateNodeVideo(chapterId, { status: 'failed', error: (err as Error).message?.slice(0, 500) || 'Video generation failed' });
                           }
                         }}
-                        disabled={chapterVideos[chapter.node.id]?.generating}
+                          disabled={isVideoGenerating}
                         className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold py-3 rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                       >
-                        {chapterVideos[chapter.node.id]?.generating
+                          {isVideoGenerating
                           ? 'Generating video...'
-                          : chapterVideos[chapter.node.id]?.failed
+                            : videoFailed
                             ? 'Retry video generation'
                             : 'Generate video for this chapter'}
                       </button>
-                    )}
+                      );
+                    })()}
                   </div>
                 )}
 
