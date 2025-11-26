@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Loader, BookPlus, Wand2 } from 'lucide-react';
+import { Sparkles, Loader, BookPlus, Wand2, Lock, Volume2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { startStoryGeneration } from '../lib/storyService';
 import { getSubscriptionUsage, SubscriptionUsage } from '../lib/subscriptionService';
@@ -14,6 +14,22 @@ interface StoryCreatorProps {
 }
 
 type TargetAudience = 'children' | 'young_adult' | 'adult';
+type ArtStyle = 'cartoon' | 'comic' | 'realistic';
+
+const artStyleLabels: Record<ArtStyle, { label: string; description: string }> = {
+  cartoon: {
+    label: 'Cartoon',
+    description: 'Fun, colorful cartoon style'
+  },
+  comic: {
+    label: 'Comic Book',
+    description: 'Classic comic book & painting style'
+  },
+  realistic: {
+    label: 'Realistic',
+    description: 'Photorealistic cinematic style'
+  }
+};
 
 const audienceSuggestions: Record<TargetAudience, string[]> = {
   children: [
@@ -76,8 +92,8 @@ const audienceLabels: Record<TargetAudience, { label: string; description: strin
     badge: '13-18'
   },
   adult: {
-    label: 'Adult',
-    description: 'Ages 18+, complex themes & historical',
+    label: 'Mature',
+    description: 'Ages 18+, complex narratives & mature themes',
     badge: '18+'
   }
 };
@@ -92,6 +108,8 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
   const [usage, setUsage] = useState<SubscriptionUsage | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [targetAudience, setTargetAudience] = useState<TargetAudience>('adult');
+  const [artStyle, setArtStyle] = useState<ArtStyle>('cartoon');
+  const [enableVoice, setEnableVoice] = useState(false);
   const [displayedSuggestions, setDisplayedSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
@@ -149,7 +167,9 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
           body: JSON.stringify({
             userPrompt: prompt,
             generateFullStory: true,
-            targetAudience
+            targetAudience,
+            artStyle,
+            enableVoice: enableVoice && usage?.features.audio
           }),
         }
       );
@@ -183,7 +203,7 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${session.access_token}`,
               },
-              body: JSON.stringify({ prompt: imagePrompt, targetAudience }),
+              body: JSON.stringify({ prompt: imagePrompt, targetAudience, artStyle }),
             }
           ).then(async (imageResponse) => {
             if (imageResponse.ok) {
@@ -363,6 +383,32 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
             </p>
           </div>
 
+          {/* Art Style Selector */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Art Style
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              {(Object.keys(artStyleLabels) as ArtStyle[]).map((style) => (
+                <button
+                  key={style}
+                  onClick={() => setArtStyle(style)}
+                  disabled={isGenerating}
+                  className={`p-3 rounded-xl border-2 transition-all disabled:opacity-50 ${
+                    artStyle === style
+                      ? 'border-purple-500 bg-purple-50 text-purple-700'
+                      : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                  }`}
+                >
+                  <div className="text-sm font-semibold">{artStyleLabels[style].label}</div>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              {artStyleLabels[artStyle].description}
+            </p>
+          </div>
+
           <label className="block text-sm font-semibold text-gray-700 mb-3">
             What kind of story do you want?
           </label>
@@ -430,6 +476,49 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
             </div>
             <span className={`text-sm font-medium ${isPublic ? 'text-green-600' : 'text-gray-600'}`}>
               {isPublic ? 'Public' : 'Private'}
+            </span>
+          </div>
+
+          {/* Voice Narration Toggle */}
+          <div className="mt-4 flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+            <div className="flex items-center space-x-3">
+              <Volume2 className="w-5 h-5 text-gray-600" />
+              <label className="text-sm font-semibold text-gray-700">
+                Voice Narration
+              </label>
+              {!usage?.features.audio && (
+                <Lock className="w-4 h-4 text-amber-500" />
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!usage?.features.audio) {
+                    setShowUpgradeModal(true);
+                  } else {
+                    setEnableVoice(!enableVoice);
+                  }
+                }}
+                disabled={isGenerating}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+                  enableVoice && usage?.features.audio ? 'bg-purple-500' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    enableVoice && usage?.features.audio ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+            <span className={`text-sm font-medium ${enableVoice && usage?.features.audio ? 'text-purple-600' : 'text-gray-500'}`}>
+              {!usage?.features.audio ? (
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="text-amber-600 hover:text-amber-700 flex items-center gap-1"
+                >
+                  Pro feature
+                </button>
+              ) : enableVoice ? 'Enabled' : 'Disabled'}
             </span>
           </div>
 
