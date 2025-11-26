@@ -7,6 +7,7 @@ import { followUser, unfollowUser, getFollowingIds } from '../lib/followService'
 import { useToast } from './Toast';
 import { useShare } from '../hooks/useShare';
 import { LoadingState } from '../shared/components/LoadingState';
+import { getLanguageFlag } from '../shared/utils/formatters';
 
 interface StoryLibraryProps {
   onSelectStory: (storyId: string) => void;
@@ -17,41 +18,6 @@ interface StoryLibraryProps {
 interface StoryWithLoading extends Story {
   generatingCover?: boolean;
 }
-
-const getLanguageFlag = (languageCode: string | null | undefined): string => {
-  const flagMap: Record<string, string> = {
-    'en': '🇺🇸',
-    'tr': '🇹🇷',
-    'es': '🇪🇸',
-    'fr': '🇫🇷',
-    'de': '🇩🇪',
-    'ar': '🇸🇦',
-    'zh': '🇨🇳',
-    'ja': '🇯🇵',
-    'ko': '🇰🇷',
-    'ru': '🇷🇺',
-    'pt': '🇵🇹',
-    'it': '🇮🇹',
-    'nl': '🇳🇱',
-    'pl': '🇵🇱',
-    'sv': '🇸🇪',
-    'hi': '🇮🇳',
-    'bn': '🇧🇩',
-    'ur': '🇵🇰',
-    'id': '🇮🇩',
-    'vi': '🇻🇳',
-    'th': '🇹🇭',
-    'uk': '🇺🇦',
-    'ro': '🇷🇴',
-    'el': '🇬🇷',
-    'cs': '🇨🇿',
-    'da': '🇩🇰',
-    'fi': '🇫🇮',
-    'no': '🇳🇴',
-  };
-
-  return flagMap[languageCode || 'en'] || '🌍';
-};
 
 export function StoryLibrary({ onSelectStory, onViewProfile, userId }: StoryLibraryProps) {
   const { showToast } = useToast();

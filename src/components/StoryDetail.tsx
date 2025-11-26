@@ -1,9 +1,15 @@
+/**
+ * Story detail view component.
+ * Refactored to use useStoryReactions hook instead of inline reaction handling.
+ */
+
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Clock, Heart, ThumbsDown, Play, Loader, Users, CheckCircle2 } from 'lucide-react';
 import { getStory } from '../lib/storyService';
-import { supabase } from '../lib/supabase';
 import type { Story } from '../lib/types';
 import { useToast } from './Toast';
+import { useStoryReactions } from '../hooks/useStoryReactions';
+import { LoadingState } from '../shared/components/LoadingState';
 
 interface StoryDetailProps {
   storyId: string;
@@ -16,10 +22,23 @@ export function StoryDetail({ storyId, userId, onBack, onStartStory }: StoryDeta
   const { showToast } = useToast();
   const [story, setStory] = useState<Story | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hasLiked, setHasLiked] = useState(false);
-  const [hasDisliked, setHasDisliked] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
-  const [dislikesCount, setDislikesCount] = useState(0);
+
+  // Use the shared reactions hook instead of inline handling
+  const {
+    userReaction,
+    likesCount,
+    dislikesCount,
+    handleLike,
+    handleDislike,
+  } = useStoryReactions(
+    userId,
+    storyId,
+    story?.likes_count || 0,
+    story?.dislikes_count || 0
+  );
+
+  const hasLiked = userReaction?.reaction_type === 'like';
+  const hasDisliked = userReaction?.reaction_type === 'dislike';
 
   useEffect(() => {
     loadStoryDetails();
@@ -31,52 +50,16 @@ export function StoryDetail({ storyId, userId, onBack, onStartStory }: StoryDeta
       if (!storyData) return;
 
       // If story is private and the viewer isn't the owner, block with a friendly message
-      if (storyData && storyData.is_public === false && storyData.created_by !== userId) {
+      if (storyData.is_public === false && storyData.created_by !== userId) {
         setStory(null);
       } else {
         setStory(storyData);
-      }
-      setLikesCount(storyData.likes_count || 0);
-      setDislikesCount(storyData.dislikes_count || 0);
-
-      if (userId) {
-        const { data: reaction } = await supabase
-          .from('story_reactions')
-          .select('reaction_type')
-          .eq('user_id', userId)
-          .eq('story_id', storyId)
-          .maybeSingle();
-
-        if (reaction) {
-          setHasLiked(reaction.reaction_type === 'like');
-          setHasDisliked(reaction.reaction_type === 'dislike');
-        }
       }
     } catch (error) {
       console.error('Error loading story details:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const isWaitingGeneration = story?.generation_status && story.generation_status !== 'fully_generated';
-
-  if (!loading && story && isWaitingGeneration) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
-        <div className="text-center max-w-md px-6">
-          <Loader className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
-          <p className="text-gray-700 font-semibold mb-2">Story is still generating</p>
-          <p className="text-gray-500 text-sm mb-6">Please check back in a moment. We’re creating the chapters and images.</p>
-          <button
-            onClick={onBack}
-            className="px-6 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-colors"
-          >
-            Go Back
-          </button>
-        </div>
-      </div>
-    );
   };
 
   const handleReaction = async (isLike: boolean) => {
@@ -86,72 +69,36 @@ export function StoryDetail({ storyId, userId, onBack, onStartStory }: StoryDeta
     }
 
     try {
-      const reactionType = isLike ? 'like' : 'dislike';
-      const { data: existing } = await supabase
-        .from('story_reactions')
-        .select('id, reaction_type')
-        .eq('user_id', userId)
-        .eq('story_id', storyId)
-        .maybeSingle();
-
-      if (existing) {
-        if (existing.reaction_type === reactionType) {
-          await supabase
-            .from('story_reactions')
-            .delete()
-            .eq('id', existing.id);
-
-          if (isLike) {
-            setHasLiked(false);
-            setLikesCount(prev => prev - 1);
-          } else {
-            setHasDisliked(false);
-            setDislikesCount(prev => prev - 1);
-          }
-        } else {
-          await supabase
-            .from('story_reactions')
-            .update({ reaction_type: reactionType })
-            .eq('id', existing.id);
-
-          if (isLike) {
-            setHasLiked(true);
-            setHasDisliked(false);
-            setLikesCount(prev => prev + 1);
-            setDislikesCount(prev => prev - 1);
-          } else {
-            setHasLiked(false);
-            setHasDisliked(true);
-            setLikesCount(prev => prev - 1);
-            setDislikesCount(prev => prev + 1);
-          }
-        }
+      if (isLike) {
+        await handleLike();
       } else {
-        await supabase
-          .from('story_reactions')
-          .insert({
-            user_id: userId,
-            story_id: storyId,
-            reaction_type: reactionType
-          });
-
-        if (isLike) {
-          setHasLiked(true);
-          setLikesCount(prev => prev + 1);
-        } else {
-          setHasDisliked(true);
-          setDislikesCount(prev => prev + 1);
-        }
+        await handleDislike();
       }
     } catch (error) {
       console.error('Error updating reaction:', error);
     }
   };
 
+  const isWaitingGeneration = story?.generation_status && story.generation_status !== 'fully_generated';
+
   if (loading) {
+    return <LoadingState fullScreen message="Loading story..." />;
+  }
+
+  if (!loading && story && isWaitingGeneration) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
-        <Loader className="w-8 h-8 animate-spin text-blue-600" />
+        <div className="text-center max-w-md px-6">
+          <Loader className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
+          <p className="text-gray-700 font-semibold mb-2">Story is still generating</p>
+          <p className="text-gray-500 text-sm mb-6">Please check back in a moment. We're creating the chapters and images.</p>
+          <button
+            onClick={onBack}
+            className="px-6 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
       </div>
     );
   }

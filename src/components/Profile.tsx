@@ -12,6 +12,7 @@ import { useToast } from './Toast';
 import { useShare } from '../hooks';
 import { LoadingState } from '../shared/components/LoadingState';
 import { ErrorState } from '../shared/components/ErrorState';
+import { formatDate } from '../shared/utils/formatters';
 
 interface ProfileProps {
   userId: string;
@@ -231,22 +232,7 @@ export function Profile({ userId, onSelectStory }: ProfileProps) {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen pb-16">
-        <Loader className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
+  // formatDate moved to shared/utils/formatters.ts
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-20">
