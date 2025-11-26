@@ -1,6 +1,12 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { followUser, unfollowUser, isFollowing, getFollowerCount, getFollowingCount } from '../lib/storyService';
+import {
+  followUser,
+  unfollowUser,
+  isFollowing,
+  getFollowerCount,
+  getFollowingCount,
+} from '../lib/followService';
 import { queryKeys } from '../lib/queryClient';
 
 interface UseFollowResult {
@@ -21,7 +27,7 @@ export function useFollow(
   // Query for follow status
   const { data: followingStatus } = useQuery({
     queryKey: queryKeys.isFollowing(currentUserId || '', targetUserId),
-    queryFn: () => isFollowing(targetUserId),
+    queryFn: () => isFollowing(targetUserId, currentUserId),
     enabled: canFollow,
   });
 
@@ -133,7 +139,7 @@ export function useFollowMultiple(currentUserId: string | undefined) {
       if (cached !== undefined) return cached;
 
       // Fetch and cache
-      const result = await isFollowing(targetUserId);
+      const result = await isFollowing(targetUserId, currentUserId);
       queryClient.setQueryData(
         queryKeys.isFollowing(currentUserId, targetUserId),
         result

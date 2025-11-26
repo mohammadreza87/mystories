@@ -1,33 +1,24 @@
+import { getConfig as getEnvConfig } from '../lib/env';
+
 /**
  * Centralized configuration for the MyStories application.
- * All environment variables and app settings should be accessed through this module.
+ * Uses a single, validated environment source to avoid duplicated config definitions.
  */
 
-// Environment variable validation
-function requireEnv(key: string): string {
-  const value = import.meta.env[key];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`);
-  }
-  return value;
-}
-
-function optionalEnv(key: string, defaultValue: string = ''): string {
-  return import.meta.env[key] || defaultValue;
-}
+const env = getEnvConfig();
 
 // App configuration
 export const config = {
   // Supabase
   supabase: {
-    url: requireEnv('VITE_SUPABASE_URL'),
-    anonKey: requireEnv('VITE_SUPABASE_ANON_KEY'),
-    functionsUrl: `${requireEnv('VITE_SUPABASE_URL')}/functions/v1`,
+    url: env.supabase.url,
+    anonKey: env.supabase.anonKey,
+    functionsUrl: `${env.supabase.url}/functions/v1`,
   },
 
   // Stripe
   stripe: {
-    publishableKey: optionalEnv('VITE_STRIPE_PUBLISHABLE_KEY'),
+    publishableKey: env.stripe.publishableKey,
   },
 
   // API Configuration
@@ -67,6 +58,11 @@ export const config = {
   cache: {
     storyPrefix: 'mystories_cache_',
     duration: 1000 * 60 * 60 * 24, // 24 hours
+  },
+
+  env: {
+    isDev: env.isDev,
+    isProd: env.isProd,
   },
 
   // Story generation limits

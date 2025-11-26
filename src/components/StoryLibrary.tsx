@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Bird, Clock, Users, Loader, ThumbsUp, ThumbsDown, User, UserPlus, UserCheck, Book, Share2, CheckCircle2 } from 'lucide-react';
-import { getStories, updateStoryCoverImage, getUserReaction, addReaction, updateReaction, removeReaction, followUser, unfollowUser, isFollowing } from '../lib/storyService';
+import { getStories, addReaction, updateReaction, removeReaction } from '../lib/storyService';
 import { supabase } from '../lib/supabase';
 import type { Story, StoryReaction } from '../lib/types';
+import { followUser, unfollowUser, getFollowingIds } from '../lib/followService';
 import { useToast } from './Toast';
 
 interface StoryLibraryProps {
@@ -57,11 +58,67 @@ export function StoryLibrary({ onSelectStory, onViewProfile, userId }: StoryLibr
   const [userReactions, setUserReactions] = useState<Record<string, StoryReaction>>({});
   const [followingUsers, setFollowingUsers] = useState<Record<string, boolean>>({});
   const [followLoading, setFollowLoading] = useState<string | null>(null);
+  const storiesRef = useRef<StoryWithLoading[]>([]);
+
+  const syncFollowingStatus = useCallback(async (storiesData: StoryWithLoading[] = storiesRef.current) => {
+    if (!userId) {
+      setFollowingUsers({});
+      return;
+    }
+
+    try {
+      const followingIds = await getFollowingIds(userId);
+      const followingMap: Record<string, boolean> = {};
+
+      storiesData.forEach((story) => {
+        if (story.created_by) {
+          followingMap[story.created_by] = followingIds.includes(story.created_by);
+        }
+      });
+
+      setFollowingUsers(followingMap);
+    } catch (error) {
+      console.error('Error loading following status:', error);
+    }
+  }, [userId]);
+
+  const loadUserReactions = useCallback(async () => {
+    if (!userId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('story_reactions')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      const reactionsMap: Record<string, StoryReaction> = {};
+      data?.forEach((reaction) => {
+        reactionsMap[reaction.story_id] = reaction;
+      });
+      setUserReactions(reactionsMap);
+    } catch (error) {
+      console.error('Error loading user reactions:', error);
+    }
+  }, [userId]);
+
+  const loadStories = useCallback(async () => {
+    try {
+      const data = await getStories();
+      storiesRef.current = data;
+      setStories(data);
+      await syncFollowingStatus(data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading stories:', error);
+      setLoading(false);
+    }
+  }, [syncFollowingStatus]);
 
   useEffect(() => {
     loadStories();
     loadUserReactions();
-    loadFollowingStatus();
 
     const channel = supabase
       .channel('story_reactions_changes')
@@ -86,103 +143,14 @@ export function StoryLibrary({ onSelectStory, onViewProfile, userId }: StoryLibr
         table: 'user_follows',
         filter: `follower_id=eq.${userId}`
       }, () => {
-        loadFollowingStatus();
+        syncFollowingStatus(storiesRef.current);
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId]);
-
-  const generateCoverImage = async (story: Story): Promise<string | null> => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.error('No active session for image generation');
-        return null;
-      }
-
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const prompt = `Young Adult book illustration: ${story.title}. ${story.description.substring(0, 150)}. Dramatic, modern, cinematic style for YA audience ${story.age_range}`;
-
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/generate-image`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ prompt }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Failed to generate cover image:', response.status, errorText);
-        return null;
-      }
-
-      const data = await response.json();
-      return data.imageUrl;
-    } catch (error) {
-      console.error('Error generating cover image:', error);
-      return null;
-    }
-  };
-
-  const loadUserReactions = async () => {
-    if (!userId) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('story_reactions')
-        .select('*')
-        .eq('user_id', userId);
-
-      if (error) throw error;
-
-      const reactionsMap: Record<string, StoryReaction> = {};
-      data?.forEach((reaction) => {
-        reactionsMap[reaction.story_id] = reaction;
-      });
-      setUserReactions(reactionsMap);
-    } catch (error) {
-      console.error('Error loading user reactions:', error);
-    }
-  };
-
-  const loadFollowingStatus = async () => {
-    if (!userId) return;
-
-    try {
-      const data = await getStories();
-      const followingMap: Record<string, boolean> = {};
-
-      for (const story of data) {
-        if (story.created_by && story.created_by !== userId) {
-          const following = await isFollowing(userId, story.created_by);
-          followingMap[story.created_by] = following;
-        }
-      }
-
-      setFollowingUsers(followingMap);
-    } catch (error) {
-      console.error('Error loading following status:', error);
-    }
-  };
-
-  const loadStories = async () => {
-    try {
-      const data = await getStories();
-      setStories(data);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error loading stories:', error);
-      setLoading(false);
-    }
-  };
+  }, [loadStories, loadUserReactions, syncFollowingStatus, userId]);
 
   const handleShare = async (storyId: string, storyTitle: string, e: React.MouseEvent) => {
     e.stopPropagation();

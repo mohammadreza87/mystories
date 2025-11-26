@@ -30,9 +30,13 @@ export function useSubscriptionUsage(userId: string | undefined): UseSubscriptio
   };
 
   const canGenerate = usage?.canGenerate ?? false;
-  const remainingStories = usage?.isPro || usage?.isGrandfathered
+  const remainingStories = usage?.hasUnlimited
     ? 'unlimited'
-    : Math.max(0, (usage?.dailyLimit ?? 1) - (usage?.storiesGeneratedToday ?? 0));
+    : Math.max(
+        0,
+        (typeof usage?.dailyLimit === 'number' ? usage.dailyLimit : 0) -
+          (usage?.storiesGeneratedToday ?? 0)
+      );
 
   return {
     usage: usage ?? null,

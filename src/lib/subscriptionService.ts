@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { config } from '../config';
 
 export interface UserSubscription {
   subscription_tier: 'free' | 'pro';
@@ -15,6 +16,7 @@ export interface UserSubscription {
 
 export interface SubscriptionUsage {
   tier: 'free' | 'pro';
+  isPro: boolean;
   isGrandfathered: boolean;
   storiesGeneratedToday: number;
   dailyLimit: number | null;
@@ -48,26 +50,30 @@ export async function getSubscriptionUsage(userId: string): Promise<Subscription
   if (!subscription) {
     return {
       tier: 'free',
+      isPro: false,
       isGrandfathered: false,
       storiesGeneratedToday: 0,
-      dailyLimit: 1,
+      dailyLimit: config.limits.free.storiesPerDay,
       hasUnlimited: false,
-      canGenerate: true,
+      canGenerate: config.limits.free.storiesPerDay > 0,
     };
   }
 
-  const hasPro = subscription.subscription_tier === 'pro' || subscription.is_grandfathered;
+  const isPro = subscription.subscription_tier === 'pro';
+  const hasUnlimited = isPro || subscription.is_grandfathered;
   const today = new Date().toISOString().split('T')[0];
   const isToday = subscription.last_generation_date === today;
   const todayCount = isToday ? subscription.stories_generated_today : 0;
+  const dailyLimit = hasUnlimited ? null : config.limits.free.storiesPerDay;
 
   return {
     tier: subscription.subscription_tier,
+    isPro,
     isGrandfathered: subscription.is_grandfathered,
     storiesGeneratedToday: todayCount,
-    dailyLimit: hasPro ? null : 1,
-    hasUnlimited: hasPro,
-    canGenerate: hasPro || todayCount < 1,
+    dailyLimit,
+    hasUnlimited,
+    canGenerate: hasUnlimited || todayCount < (dailyLimit ?? 0),
   };
 }
 
