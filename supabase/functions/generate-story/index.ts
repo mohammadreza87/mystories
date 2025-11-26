@@ -164,34 +164,37 @@ Deno.serve(async (req: Request) => {
       children: {
         ageRange: "5-10",
         contentRules: "Child-appropriate content only. No violence, fear, weapons, death, or mature themes. Simple vocabulary.",
-        chapterLength: "2-3 SHORT paragraphs (4-5 sentences max)",
+        chapterLength: "1-2 SHORT paragraphs (3-4 sentences max). Punchy and exciting!",
+        firstChapterStyle: "Start with ACTION or something exciting happening. Hook them in the first sentence!",
         artStyle: "Warm, colorful children's book illustration",
         endingTypes: "happy/learning_moment/neutral",
         minChapters: 3,
         maxChapters: 6,
-        maxTokens: 480,
+        maxTokens: 280,
         contextLength: 1200,
       },
       young_adult: {
         ageRange: "13-18",
         contentRules: "Teen-appropriate content. Mild conflict and drama allowed. No explicit content.",
-        chapterLength: "3-4 paragraphs with more detail and emotional depth",
+        chapterLength: "2-3 SHORT paragraphs (5-6 sentences max). Fast-paced and engaging!",
+        firstChapterStyle: "Open with a HOOK - mystery, action, or intriguing moment. Make them want MORE!",
         artStyle: "Dynamic, modern YA book cover style",
         endingTypes: "triumphant/bittersweet/cliffhanger/redemption",
         minChapters: 4,
         maxChapters: 10,
-        maxTokens: 700,
+        maxTokens: 400,
         contextLength: 2000,
       },
       adult: {
         ageRange: "18+",
         contentRules: "Adult content allowed. Complex themes, moral ambiguity, historical accuracy, political intrigue, war, consequences. No explicit sexual content.",
-        chapterLength: "4-6 detailed paragraphs with rich narrative, dialogue, and character development",
+        chapterLength: "2-3 tight paragraphs. No filler. Every sentence must earn its place.",
+        firstChapterStyle: "Open IN MEDIAS RES - drop the reader into the action. Hook them IMMEDIATELY with stakes.",
         artStyle: "Cinematic, realistic, dramatic illustration",
         endingTypes: "triumphant/tragic/bittersweet/ambiguous/pyrrhic_victory/redemption",
         minChapters: 5,
         maxChapters: 15,
-        maxTokens: 1200,
+        maxTokens: 600,
         contextLength: 3000,
       },
     };
@@ -199,7 +202,7 @@ Deno.serve(async (req: Request) => {
     const config = audienceConfig[targetAudience] || audienceConfig.children;
 
     if (generateFullStory && userPrompt) {
-      systemPrompt = `Create interactive story metadata and opening chapter for ${config.ageRange} audience.
+      systemPrompt = `Create interactive story metadata and a SHORT, PUNCHY opening chapter for ${config.ageRange} audience.
 
 Language rules (MANDATORY):
 - Detect the language of the user prompt.
@@ -210,32 +213,33 @@ Language rules (MANDATORY):
 Content rules for ${targetAudience} audience:
 ${config.contentRules}
 
-Writing style:
-- Opening chapter: ${config.chapterLength}
-- Provide 2-3 meaningful choices that significantly impact the story direction
-- For historical/biographical stories: Present real decision points the subject faced
-- Make choices feel weighty with real consequences
-- Match language of user prompt exactly
+CRITICAL - Writing style for OPENING CHAPTER:
+- ${config.firstChapterStyle}
+- Keep it SHORT: ${config.chapterLength}
+- NO FILLER. No lengthy descriptions. No boring setup.
+- Jump into the action/conflict IMMEDIATELY
+- End on a moment that DEMANDS a choice
+- Choices should feel urgent and exciting
 
 Return ONLY valid JSON:
 {
   "title": "Story Title",
-  "description": "2-3 sentence compelling description",
+  "description": "1-2 sentence HOOKING description",
   "ageRange": "${config.ageRange}",
   "estimatedDuration": ${targetAudience === 'adult' ? 25 : targetAudience === 'young_adult' ? 15 : 10},
-  "storyContext": "Detailed context for story continuation including key characters, setting, and narrative threads",
-  "startContent": "Opening chapter (${config.chapterLength})",
+  "storyContext": "Key context for continuation (characters, setting, stakes)",
+  "startContent": "SHORT opening chapter - ${config.chapterLength}",
   "initialChoices": [
-    {"text": "Choice 1 - clear action", "hint": "Potential consequence or direction"},
-    {"text": "Choice 2 - alternative path", "hint": "Different outcome possibility"}
+    {"text": "Choice 1 - clear action", "hint": "Quick consequence hint"},
+    {"text": "Choice 2 - alternative path", "hint": "Quick outcome hint"}
   ],
   "language": "en",
   "styleGuide": {
-    "characters": [{"name": "Name", "description": "Detailed appearance, personality, motivations"}],
+    "characters": [{"name": "Name", "description": "Appearance and key traits"}],
     "artStyle": "${config.artStyle}",
-    "setting": "Detailed setting description",
-    "colorPalette": "Color scheme for visual consistency",
-    "tone": "Overall narrative tone (dark/light/neutral)"
+    "setting": "Setting description",
+    "colorPalette": "Color scheme",
+    "tone": "Narrative tone"
   }
 }`;
 
@@ -244,8 +248,10 @@ Return ONLY valid JSON:
 Target audience: ${targetAudience} (${config.ageRange})
 Content guidelines: ${config.contentRules}
 
-Create an engaging, immersive opening that hooks the reader and presents meaningful choices.
-For historical/biographical content: Be historically accurate while allowing reader agency at key decision points.`;
+IMPORTANT: Create a SHORT, CATCHY opening that HOOKS the reader instantly!
+- Start with action, mystery, or excitement - NOT background info
+- Keep it brief: ${config.chapterLength}
+- Make choices feel urgent and meaningful`;
     } else {
       const currentChapter = chapterCount || 0;
       const minimumChapters = config.minChapters;
@@ -258,23 +264,25 @@ For historical/biographical content: Be historically accurate while allowing rea
 
 Content rules: ${config.contentRules}
 
-Writing rules:
+CRITICAL - Keep it SHORT and PUNCHY:
 - Chapter length: ${config.chapterLength}
+- NO FILLER or unnecessary description
+- Jump straight to the consequence of the choice
+- Keep momentum HIGH - every sentence moves the story forward
 - Stories should be ${minimumChapters}-${maximumChapters} chapters
-- ${shouldPreventEnding ? `Chapter ${currentChapter + 1}: DO NOT END. Provide 2-3 meaningful choices.` : mustEnd ? `Chapter ${currentChapter + 1}: THIS IS THE FINAL CHAPTER. You MUST end the story now. Set isEnding=true, provide endingType, set choices=[]` : shouldEncourageEnding ? `Chapter ${currentChapter + 1}: Start wrapping up. Build toward a satisfying conclusion.` : `Chapter ${currentChapter + 1}: Develop the plot with consequences from previous choice.`}
-- Ending types for this audience: ${config.endingTypes}
+- ${shouldPreventEnding ? `Chapter ${currentChapter + 1}: DO NOT END. Provide 2-3 urgent choices.` : mustEnd ? `Chapter ${currentChapter + 1}: FINAL CHAPTER. End the story now. Set isEnding=true, provide endingType, set choices=[]` : shouldEncourageEnding ? `Chapter ${currentChapter + 1}: Wrap up with impact. Build toward a satisfying conclusion.` : `Chapter ${currentChapter + 1}: Show consequences FAST. Keep it exciting.`}
+- Ending types: ${config.endingTypes}
 - If ending: choices = []
-- Each choice should lead to meaningfully different outcomes
 
 Return ONLY JSON:
 {
-  "content": "Chapter content (${config.chapterLength})",
-  "choices": [{"text": "Choice action", "hint": "Consequence hint"}],
+  "content": "SHORT chapter - ${config.chapterLength}",
+  "choices": [{"text": "Choice action", "hint": "Quick hint"}],
   "isEnding": false,
   "endingType": null
 }
 
-${shouldPreventEnding ? 'Must provide 2-3 impactful choices.' : mustEnd ? `MUST set isEnding=true, endingType (${config.endingTypes}), choices=[]` : shouldEncourageEnding ? 'Build toward conclusion or end if narratively appropriate.' : 'Continue story with meaningful progression.'}`;
+${shouldPreventEnding ? 'Must provide 2-3 exciting choices.' : mustEnd ? `MUST set isEnding=true, endingType (${config.endingTypes}), choices=[]` : shouldEncourageEnding ? 'Build toward a punchy conclusion.' : 'Keep momentum - no filler!'}`;
 
       if (userChoice && previousContent) {
         const trimmedPrevious = (previousContent || "").slice(-config.contextLength);
@@ -286,13 +294,13 @@ ${trimmedPrevious}
 
 Reader chose: "${userChoice}"
 
-Continue the story showing consequences of this choice. Maintain narrative consistency.`;
+Continue the story - show consequences FAST. Keep it SHORT (${config.chapterLength}). No filler!`;
       } else {
         const trimmedContext = (storyContext || "").slice(0, config.contextLength);
         actualUserPrompt = `Theme: ${trimmedContext}
 Target audience: ${targetAudience}
 
-Create opening with 2-3 meaningful choices.`;
+Create SHORT, CATCHY opening with 2-3 exciting choices.`;
       }
     }
 
