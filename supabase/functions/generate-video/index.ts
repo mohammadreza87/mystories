@@ -190,8 +190,18 @@ async function createTextToVideoJob(
   const data = await response.json() as LeonardoTextToVideoJob;
   console.log("Leonardo response:", JSON.stringify(data));
 
+  // Check for error in response body (Leonardo sometimes returns 200 with error)
+  if ((data as Record<string, unknown>).error) {
+    const errorMsg = (data as Record<string, unknown>).error as string;
+    console.error("Leonardo API error in response:", errorMsg);
+    throw new Error(`Leonardo API error: ${errorMsg}`);
+  }
+
   const generationId = data.textToVideoGenerationJob?.generationId;
-  if (!generationId) throw new Error("No generationId returned from Leonardo text-to-video generation");
+  if (!generationId) {
+    console.error("Unexpected Leonardo response structure:", JSON.stringify(data));
+    throw new Error("No generationId returned from Leonardo - check API credits or account status");
+  }
   return generationId;
 }
 
