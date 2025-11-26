@@ -1,0 +1,45 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getSubscriptionUsage, SubscriptionUsage } from '../lib/subscriptionService';
+import { queryKeys } from '../lib/queryClient';
+
+interface UseSubscriptionUsageResult {
+  usage: SubscriptionUsage | null;
+  loading: boolean;
+  error: Error | null;
+  refresh: () => Promise<void>;
+  canGenerate: boolean;
+  remainingStories: number | 'unlimited';
+}
+
+export function useSubscriptionUsage(userId: string | undefined): UseSubscriptionUsageResult {
+  const queryClient = useQueryClient();
+
+  const { data: usage, isLoading, error } = useQuery({
+    queryKey: queryKeys.subscriptionUsage(userId || ''),
+    queryFn: () => getSubscriptionUsage(userId!),
+    enabled: !!userId,
+    // Usage data should refresh more frequently
+    staleTime: 1 * 60 * 1000, // 1 minute
+    gcTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const refresh = async () => {
+    if (userId) {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.subscriptionUsage(userId) });
+    }
+  };
+
+  const canGenerate = usage?.canGenerate ?? false;
+  const remainingStories = usage?.isPro || usage?.isGrandfathered
+    ? 'unlimited'
+    : Math.max(0, (usage?.dailyLimit ?? 1) - (usage?.storiesGeneratedToday ?? 0));
+
+  return {
+    usage: usage ?? null,
+    loading: isLoading,
+    error: error as Error | null,
+    refresh,
+    canGenerate,
+    remainingStories,
+  };
+}

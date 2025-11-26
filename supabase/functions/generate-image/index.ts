@@ -7,12 +7,11 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { authenticate, isAuthError } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { CORS_HEADERS } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
-};
+const corsHeaders = CORS_HEADERS;
 
 interface ImageRequest {
   prompt: string;
@@ -360,6 +359,19 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Authenticate the request
+    const authResult = await authenticate(req);
+    if (isAuthError(authResult)) {
+      return authResult;
+    }
+    const { user } = authResult;
+
+    // Check rate limit
+    const rateLimitResponse = await enforceRateLimit(user.id, 'generate-image');
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     const body = await req.json();
     console.log("Received request body:", body);
 

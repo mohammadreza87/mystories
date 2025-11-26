@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -79,6 +80,12 @@ Deno.serve(async (req: Request) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
+    }
+
+    // Check rate limit
+    const rateLimitResponse = await enforceRateLimit(user.id, 'generate-story');
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
 
     const { storyContext, userChoice, previousContent, storyTitle, userPrompt, generateFullStory, chapterCount, targetAudience = 'children' }: StoryRequest = await req.json();

@@ -7,6 +7,7 @@ import { getUserStories, deleteStory, updateStoryVisibility, getFollowerCount, g
 import type { Story, UserProfile as UserProfileType } from '../lib/types';
 import { getUserSubscription, createCustomerPortalSession } from '../lib/subscriptionService';
 import UpgradeModal from './UpgradeModal';
+import { useToast } from './Toast';
 
 interface ProfileProps {
   userId: string;
@@ -28,6 +29,7 @@ interface UserProfile {
 
 export function Profile({ userId, onSelectStory }: ProfileProps) {
   const { user, signOut } = useAuth();
+  const { showToast } = useToast();
   const [completedStories, setCompletedStories] = useState<CompletedStory[]>([]);
   const [createdStories, setCreatedStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,7 +111,7 @@ export function Profile({ userId, onSelectStory }: ProfileProps) {
     if (url) {
       window.location.href = url;
     } else {
-      alert('Unable to open subscription management. Please try again.');
+      showToast('Unable to open subscription management. Please try again.', 'error');
     }
   };
 
@@ -175,7 +177,7 @@ export function Profile({ userId, onSelectStory }: ProfileProps) {
       setCreatedStories(prev => prev.filter(s => s.id !== storyId));
     } catch (error) {
       console.error('Error deleting story:', error);
-      alert('Failed to delete story. Please try again.');
+      showToast('Failed to delete story. Please try again.', 'error');
     } finally {
       setDeletingStoryId(null);
     }
@@ -201,9 +203,10 @@ export function Profile({ userId, onSelectStory }: ProfileProps) {
     } else {
       try {
         await navigator.clipboard.writeText(shareUrl);
-        alert('Link copied to clipboard!');
+        showToast('Link copied to clipboard!', 'success');
       } catch (error) {
         console.error('Error copying to clipboard:', error);
+        showToast('Failed to copy link', 'error');
       }
     }
   };
@@ -217,7 +220,7 @@ export function Profile({ userId, onSelectStory }: ProfileProps) {
       );
     } catch (error) {
       console.error('Error updating story visibility:', error);
-      alert('Failed to update story visibility. Please try again.');
+      showToast('Failed to update story visibility. Please try again.', 'error');
     } finally {
       setUpdatingVisibilityId(null);
     }

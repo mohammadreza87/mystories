@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Camera, Loader } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/authContext';
+import { useToast } from './Toast';
 
 interface ProfileEditProps {
   onClose: () => void;
@@ -18,6 +19,7 @@ interface UserProfile {
 
 export function ProfileEdit({ onClose, onSave }: ProfileEditProps) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
@@ -84,7 +86,7 @@ export function ProfileEdit({ onClose, onSave }: ProfileEditProps) {
 
       setAvatarUrl(data.publicUrl);
     } catch (error) {
-      alert('Error uploading avatar');
+      showToast('Error uploading avatar', 'error');
       console.error('Error:', error);
     } finally {
       setUploading(false);
@@ -171,7 +173,7 @@ export function ProfileEdit({ onClose, onSave }: ProfileEditProps) {
       onSave();
       onClose();
     } catch (error) {
-      alert('Error saving profile');
+      showToast('Error saving profile', 'error');
       console.error('Error:', error);
     } finally {
       setSaving(false);

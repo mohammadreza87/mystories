@@ -3,6 +3,7 @@ import { Crown, Sparkles, Zap, Check, ArrowLeft, Settings, Loader } from 'lucide
 import { getUserSubscription, createCheckoutSession, createCustomerPortalSession, STRIPE_PRICES } from '../lib/subscriptionService';
 import type { UserProfile } from '../lib/types';
 import { useAuth } from '../lib/authContext';
+import { useToast } from './Toast';
 
 interface SubscriptionProps {
   userId: string;
@@ -11,6 +12,7 @@ interface SubscriptionProps {
 
 export function Subscription({ userId, onBack }: SubscriptionProps) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [subscription, setSubscription] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -37,7 +39,7 @@ export function Subscription({ userId, onBack }: SubscriptionProps) {
 
   const handleUpgrade = async (priceId: string) => {
     if (!priceId || priceId.includes('your_') || priceId.includes('_here')) {
-      alert('Stripe is not configured. Please add your Stripe API keys and price IDs to the .env file.\n\nRequired variables:\n- VITE_STRIPE_PUBLISHABLE_KEY\n- VITE_STRIPE_PRICE_MONTHLY\n- VITE_STRIPE_PRICE_ANNUAL\n\nAlso set STRIPE_SECRET_KEY in Supabase Edge Functions.');
+      showToast('Stripe is not configured. Please check your API keys.', 'error');
       return;
     }
 
@@ -47,11 +49,11 @@ export function Subscription({ userId, onBack }: SubscriptionProps) {
       if (url) {
         window.location.href = url;
       } else {
-        alert('Failed to start checkout. Please ensure:\n1. Stripe API keys are configured\n2. Price IDs are valid\n3. Stripe webhook is set up');
+        showToast('Failed to start checkout. Please try again.', 'error');
       }
     } catch (error) {
       console.error('Upgrade error:', error);
-      alert('Checkout failed. Please check:\n1. Stripe configuration in .env\n2. STRIPE_SECRET_KEY in Supabase\n3. Price IDs are valid');
+      showToast('Checkout failed. Please try again.', 'error');
     } finally {
       setCheckoutLoading(false);
     }
@@ -62,7 +64,7 @@ export function Subscription({ userId, onBack }: SubscriptionProps) {
     if (url) {
       window.location.href = url;
     } else {
-      alert('Unable to open subscription management. Please try again.');
+      showToast('Unable to open subscription management. Please try again.', 'error');
     }
   };
 

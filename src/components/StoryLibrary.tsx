@@ -3,6 +3,7 @@ import { Bird, Clock, Users, Loader, ThumbsUp, ThumbsDown, User, UserPlus, UserC
 import { getStories, updateStoryCoverImage, getUserReaction, addReaction, updateReaction, removeReaction, followUser, unfollowUser, isFollowing } from '../lib/storyService';
 import { supabase } from '../lib/supabase';
 import type { Story, StoryReaction } from '../lib/types';
+import { useToast } from './Toast';
 
 interface StoryLibraryProps {
   onSelectStory: (storyId: string) => void;
@@ -50,6 +51,7 @@ const getLanguageFlag = (languageCode: string | null | undefined): string => {
 };
 
 export function StoryLibrary({ onSelectStory, onViewProfile, userId }: StoryLibraryProps) {
+  const { showToast } = useToast();
   const [stories, setStories] = useState<StoryWithLoading[]>([]);
   const [loading, setLoading] = useState(true);
   const [userReactions, setUserReactions] = useState<Record<string, StoryReaction>>({});
@@ -202,9 +204,10 @@ export function StoryLibrary({ onSelectStory, onViewProfile, userId }: StoryLibr
     } else {
       try {
         await navigator.clipboard.writeText(shareUrl);
-        alert('Link copied to clipboard!');
+        showToast('Link copied to clipboard!', 'success');
       } catch (error) {
         console.error('Error copying to clipboard:', error);
+        showToast('Failed to copy link', 'error');
       }
     }
   };
@@ -213,7 +216,7 @@ export function StoryLibrary({ onSelectStory, onViewProfile, userId }: StoryLibr
     e.stopPropagation();
 
     if (!userId) {
-      alert('Please sign in to react to stories');
+      showToast('Please sign in to react to stories', 'warning');
       return;
     }
 
@@ -241,7 +244,7 @@ export function StoryLibrary({ onSelectStory, onViewProfile, userId }: StoryLibr
     e.stopPropagation();
 
     if (!userId) {
-      alert('Please sign in to follow creators');
+      showToast('Please sign in to follow creators', 'warning');
       return;
     }
 
