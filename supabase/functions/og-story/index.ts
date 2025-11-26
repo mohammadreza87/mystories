@@ -1,10 +1,7 @@
 /**
- * Lightweight OG meta endpoint for story sharing.
- * Returns HTML with Open Graph/Twitter meta tags and then redirects to the app route.
- *
- * Query params:
- * - storyId (required)
- * - redirect (optional) default: /story/{id}
+ * OG meta endpoint for story sharing.
+ * Returns HTML with OG/Twitter meta tags and no inline scripts/styles to avoid CSP issues.
+ * Optionally redirects (302) human user-agents to the story URL.
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -23,8 +20,14 @@ interface StoryRow {
 }
 
 function escapeHtml(str: string) {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
+
+const BOT_REGEX = /(bot|facebookexternalhit|twitterbot|slackbot|telegrambot|discordbot|embedly)/i;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -33,7 +36,7 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
   const storyId = url.searchParams.get("storyId");
-  const redirect = url.searchParams.get("redirect") || `/story/${storyId || ""}`;
+  const redirect = url.searchParams.get("redirect") || (storyId ? `/story/${storyId}` : "/");
 
   if (!storyId) {
     return new Response("storyId is required", { status: 400, headers: corsHeaders });
@@ -62,7 +65,9 @@ Deno.serve(async (req) => {
   const desc = escapeHtml(
     (story?.description || "Read this interactive story on Next Tale.").slice(0, 180)
   );
-  const image = story?.cover_image_url || `${supabaseUrl}/storage/v1/object/public/defaults/cover.png`;
+  const image =
+    story?.cover_image_url ||
+    `${supabaseUrl}/storage/v1/object/public/defaults/cover.png`;
   const canonical = redirect.startsWith("http") ? redirect : `${url.origin}${redirect}`;
 
   const html = `<!DOCTYPE html>
@@ -85,14 +90,23 @@ Deno.serve(async (req) => {
   <meta name="twitter:title" content="${title}" />
   <meta name="twitter:description" content="${desc}" />
   <meta name="twitter:image" content="${image}" />
-  <meta http-equiv="refresh" content="0; url=${canonical}" />
   <link rel="canonical" href="${canonical}" />
 </head>
 <body>
-  <p>Redirecting to the story...</p>
-  <script>window.location.href = "${canonical}";</script>
+  <p>Preview ready. <a href="${canonical}">Continue to story</a>.</p>
 </body>
 </html>`;
+
+  const ua = req.headers.get("user-agent") || "";
+  const isBot = BOT_REGEX.test(ua);
+
+  // For humans, do a 302 redirect; bots get the OG HTML
+  if (!isBot) {
+    return new Response(null, {
+      status: 302,
+      headers: { Location: canonical, ...corsHeaders },
+    });
+  }
 
   return new Response(html, {
     status: 200,
