@@ -126,6 +126,7 @@ describe('useShare', () => {
         clipboard: { writeText: vi.fn() },
       });
       vi.stubGlobal('location', { origin: 'https://mystories.com' });
+      vi.stubGlobal('import.meta', { env: { VITE_SUPABASE_URL: 'https://test.supabase.co' } });
 
       const { result } = renderHook(() => useShare(), { wrapper });
 
@@ -136,7 +137,7 @@ describe('useShare', () => {
       expect(mockShare).toHaveBeenCalledWith({
         title: 'My Great Story',
         text: 'Check out this interactive story: My Great Story',
-        url: 'https://mystories.com?story=story-123',
+        url: 'https://test.supabase.co/functions/v1/og-story?storyId=story-123&redirect=https%3A%2F%2Fmystories.com%2Fstory%2Fstory-123',
       });
     });
   });

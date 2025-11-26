@@ -3,7 +3,7 @@ import { useToast } from '../components/Toast';
 
 interface UseShareResult {
   share: (url: string, title: string, text?: string) => Promise<boolean>;
-  shareStory: (storyId: string, storyTitle: string) => Promise<boolean>;
+  shareStory: (storyId: string, storyTitle: string, description?: string, coverUrl?: string) => Promise<boolean>;
 }
 
 export function useShare(): UseShareResult {
@@ -40,10 +40,26 @@ export function useShare(): UseShareResult {
     }
   }, [showToast]);
 
-  const shareStory = useCallback(async (storyId: string, storyTitle: string): Promise<boolean> => {
-    const shareUrl = `${window.location.origin}?story=${storyId}`;
-    return share(shareUrl, storyTitle, `Check out this interactive story: ${storyTitle}`);
-  }, [share]);
+  const shareStory = useCallback(
+    async (
+      storyId: string,
+      storyTitle: string,
+      description?: string,
+      coverUrl?: string
+    ): Promise<boolean> => {
+      const redirect = `${window.location.origin}/story/${storyId}`;
+      const ogUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/og-story?storyId=${storyId}&redirect=${encodeURIComponent(redirect)}`;
+
+      // For native share we keep the canonical URL; crawlers will hit the OG endpoint
+      const shareUrl = ogUrl;
+      const text = description
+        ? `${description.slice(0, 160)}`
+        : `Check out this interactive story: ${storyTitle}`;
+
+      return share(shareUrl, storyTitle, text);
+    },
+    [share]
+  );
 
   return { share, shareStory };
 }
