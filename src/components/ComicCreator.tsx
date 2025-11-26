@@ -117,7 +117,8 @@ export function ComicCreator({ userId, onStoryCreated }: ComicCreatorProps) {
       return;
     }
 
-    if (usage && !usage.canGenerate) {
+    const tier = usage?.tier || 'free';
+    if (usage && (!usage.canGenerate || tier === 'free')) {
       setShowUpgradeModal(true);
       return;
     }

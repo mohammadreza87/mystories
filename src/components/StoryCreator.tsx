@@ -118,6 +118,9 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
       return;
     }
 
+    const tier = usage?.tier || 'free';
+    const allowImages = tier !== 'free';
+
     setIsGenerating(true);
     setError(null);
     setProgress('Creating your story with AI...');
@@ -170,23 +173,25 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
       // Start cover image generation in parallel (non-blocking)
       const imagePrompt = `Young Adult book cover illustration: ${generatedData.title}. ${generatedData.description.substring(0, 150)}. Dramatic, modern, cinematic style for teens and young adults.`;
       
-      const coverImagePromise = fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ prompt: imagePrompt, targetAudience }),
-        }
-      ).then(async (imageResponse) => {
-        if (imageResponse.ok) {
-          const imageData = await imageResponse.json();
-          return imageData.imageUrl;
-        }
-        return null;
-      }).catch(() => null);
+      const coverImagePromise = allowImages
+        ? fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({ prompt: imagePrompt, targetAudience }),
+            }
+          ).then(async (imageResponse) => {
+            if (imageResponse.ok) {
+              const imageData = await imageResponse.json();
+              return imageData.imageUrl;
+            }
+            return null;
+          }).catch(() => null)
+        : Promise.resolve(null);
 
       // Create story without waiting for cover image
       const { data: story, error: storyError } = await supabase
@@ -199,7 +204,7 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
           story_context: generatedData.storyContext,
           created_by: userId,
           is_public: isPublic,
-          is_user_generated: true,
+          is_user_generated: tier === 'free',
           generation_status: 'first_chapter_ready',
           generation_progress: 10,
           language: generatedData.language || 'en',

@@ -140,6 +140,43 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
     }
   }, [chapters]);
 
+  // Auto-generate chapter video for Max plan users when a chapter is first loaded
+  useEffect(() => {
+    if (!subscriptionUsage?.features.video || chapters.length === 0) return;
+
+    const latest = chapters[chapters.length - 1];
+    const chapterId = latest.node.id;
+    const existing = chapterVideos[chapterId];
+
+    if (latest.node.id === 'loading') return;
+    if (existing?.url || existing?.generating) return;
+
+    setChapterVideos((prev) => ({
+      ...prev,
+      [chapterId]: { url: null, generating: true },
+    }));
+
+    generateChapterVideo({
+      prompt: `${story?.title || 'Story'} - ${latest.node.content.slice(0, 400)}`,
+      durationSeconds: 8,
+      aspectRatio: '16:9',
+    })
+      .then((videoUrl) => {
+        setChapterVideos((prev) => ({
+          ...prev,
+          [chapterId]: { url: videoUrl, generating: false },
+        }));
+      })
+      .catch((err) => {
+        console.error('Video generation failed', err);
+        showToast('Video generation failed. Please try again.', 'error');
+        setChapterVideos((prev) => ({
+          ...prev,
+          [chapterId]: { url: null, generating: false },
+        }));
+      });
+  }, [chapters, chapterVideos, story?.title, subscriptionUsage?.features.video]);
+
   const generateUniqueNodeKey = (): string => {
     return `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   };
