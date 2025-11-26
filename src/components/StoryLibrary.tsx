@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import type { Story, StoryReaction } from '../lib/types';
 import { followUser, unfollowUser, getFollowingIds } from '../lib/followService';
 import { useToast } from './Toast';
+import { useShare } from '../hooks/useShare';
 
 interface StoryLibraryProps {
   onSelectStory: (storyId: string) => void;
@@ -53,6 +54,7 @@ const getLanguageFlag = (languageCode: string | null | undefined): string => {
 
 export function StoryLibrary({ onSelectStory, onViewProfile, userId }: StoryLibraryProps) {
   const { showToast } = useToast();
+  const { shareStory } = useShare();
   const [stories, setStories] = useState<StoryWithLoading[]>([]);
   const [loading, setLoading] = useState(true);
   const [userReactions, setUserReactions] = useState<Record<string, StoryReaction>>({});
@@ -154,29 +156,9 @@ export function StoryLibrary({ onSelectStory, onViewProfile, userId }: StoryLibr
 
   const handleShare = async (storyId: string, storyTitle: string, e: React.MouseEvent) => {
     e.stopPropagation();
-
-    const shareUrl = `${window.location.origin}?story=${storyId}`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: storyTitle,
-          text: `Check out this interactive story: ${storyTitle}`,
-          url: shareUrl,
-        });
-      } catch (error) {
-        if ((error as Error).name !== 'AbortError') {
-          console.error('Error sharing:', error);
-        }
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        showToast('Link copied to clipboard!', 'success');
-      } catch (error) {
-        console.error('Error copying to clipboard:', error);
-        showToast('Failed to copy link', 'error');
-      }
+    const success = await shareStory(storyId, storyTitle);
+    if (!success) {
+      showToast('Unable to share right now', 'error');
     }
   };
 

@@ -1,5 +1,12 @@
 # MyStories - Implementation Checklist
 
+## Updates (current state)
+- Config now lives in `src/config/index.ts` with `src/config.ts` re-exporting it; skip the previous split/merge instructions and use that source moving forward.
+- Zustand stores for auth/subscription/UI were removed as dead code; `AuthProvider` (context) remains the active auth mechanism.
+- Follow logic is centralized in `src/lib/followService.ts` and used via hooks; duplicate functions were removed from `storyService`.
+- Sharing now uses the shared `useShare` hook in StoryLibrary/Profile to avoid ad-hoc navigator/clipboard code.
+- Next focus: feature-folder extraction (stories/reactions/social/auth), React Query-based services per entity, and reusable UI states (loading/error).
+
 ## Quick Start Guide
 
 This checklist provides a step-by-step guide to implement the architectural refactoring.

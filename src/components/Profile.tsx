@@ -9,6 +9,7 @@ import type { Story, UserProfile as UserProfileType } from '../lib/types';
 import { getUserSubscription, createCustomerPortalSession } from '../lib/subscriptionService';
 import UpgradeModal from './UpgradeModal';
 import { useToast } from './Toast';
+import { useShare } from '../hooks';
 
 interface ProfileProps {
   userId: string;
@@ -31,6 +32,7 @@ interface UserProfile {
 export function Profile({ userId, onSelectStory }: ProfileProps) {
   const { user, signOut } = useAuth();
   const { showToast } = useToast();
+  const { shareStory } = useShare();
   const [completedStories, setCompletedStories] = useState<CompletedStory[]>([]);
   const [createdStories, setCreatedStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
@@ -186,29 +188,9 @@ export function Profile({ userId, onSelectStory }: ProfileProps) {
 
   const handleShare = async (storyId: string, storyTitle: string, e: React.MouseEvent) => {
     e.stopPropagation();
-
-    const shareUrl = `${window.location.origin}?story=${storyId}`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: storyTitle,
-          text: `Check out this interactive story: ${storyTitle}`,
-          url: shareUrl,
-        });
-      } catch (error) {
-        if ((error as Error).name !== 'AbortError') {
-          console.error('Error sharing:', error);
-        }
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        showToast('Link copied to clipboard!', 'success');
-      } catch (error) {
-        console.error('Error copying to clipboard:', error);
-        showToast('Failed to copy link', 'error');
-      }
+    const success = await shareStory(storyId, storyTitle);
+    if (!success) {
+      showToast('Unable to share right now', 'error');
     }
   };
 
