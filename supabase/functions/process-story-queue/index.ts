@@ -105,13 +105,15 @@ Deno.serve(async (req: Request) => {
       })
       .eq("id", storyId);
 
-    generateStoryTree(storyId, story, choicesData, supabase, deepseekApiKey, supabaseUrl, supabaseServiceKey);
+    // IMPORTANT: Must await generateStoryTree or the edge function will terminate
+    // before background generation completes, leaving story stuck at 15%
+    await generateStoryTree(storyId, story, choicesData, supabase, deepseekApiKey, supabaseUrl, supabaseServiceKey);
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         success: true,
-        message: "First chapter generated, background generation started",
-        progress: 10,
+        message: "Story generation completed",
+        progress: 100,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
