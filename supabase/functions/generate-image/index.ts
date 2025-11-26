@@ -390,16 +390,19 @@ function buildStructuredScenePrompt(params: {
   storyContext?: string;
 }): string {
   const { scene, storyTitle, artStyle, targetAudience, styleReference, storyContext } = params;
-  return [
-    storyTitle ? `Title: ${storyTitle}.` : "",
-    targetAudience ? `Audience: ${targetAudience}.` : "",
-    storyContext ? `Context: ${storyContext.slice(0, 400)}.` : "",
+  const parts = [
+    storyTitle ? `${storyTitle}.` : "",
+    storyContext ? `Context: ${storyContext.slice(0, 250)}.` : "",
     `Scene: ${scene}`,
-    artStyle ? `Art style: ${artStyle} (must be applied).` : "",
-    styleReference ? `Style hints: ${styleReference.slice(0, 150)}.` : "",
-    "Include setting/time, key characters with visual traits and actions, mood/tone, lighting and color palette, composition/perspective.",
-    "Constraints: one frame, no text/speech bubbles/watermarks, no aspect ratios, no camera jargon."
-  ].filter(Boolean).join(" ");
+    targetAudience ? `Audience: ${targetAudience}.` : "",
+    artStyle ? `Style: ${artStyle} (apply).` : "",
+    styleReference ? `Hints: ${styleReference.slice(0, 120)}.` : "",
+    "Include setting/time, key characters with visual traits and actions, mood, lighting/color palette, composition/perspective.",
+    "One frame, no text/speech bubbles/watermarks, no aspect ratios, no camera jargon."
+  ].filter(Boolean);
+
+  // Build a single flowing sentence-like prompt to keep it concise.
+  return parts.join(" ");
 }
 
 async function buildDeepseekPrompt(
@@ -603,7 +606,7 @@ Deno.serve(async (req: Request) => {
     const STYLE_PREFIX = artStyleConfig.promptPrefix;
 
     // Keep scene text tight to avoid API length errors
-    const MAX_SCENE_CHARS = 320;
+    const MAX_SCENE_CHARS = 220;
     const sceneSlice = sanitizedPrompt.slice(0, MAX_SCENE_CHARS);
     const structuredPrompt = buildStructuredScenePrompt({
       scene: sceneSlice,
@@ -627,7 +630,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Leonardo rejects overlong prompts; clamp aggressively
-    const MAX_PROMPT_LENGTH = 650;
+    const MAX_PROMPT_LENGTH = 520;
     if (fullPrompt.length > MAX_PROMPT_LENGTH) {
       fullPrompt = `${fullPrompt.slice(0, MAX_PROMPT_LENGTH)}…`;
     }
