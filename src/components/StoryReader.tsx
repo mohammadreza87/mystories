@@ -653,11 +653,6 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
   };
 
   const speakText = async (text: string, nodeId: string, audioData: string | null) => {
-    if (subscriptionUsage && !subscriptionUsage.features.audio) {
-      showToast('Audio narration is available on Pro and Max plans.', 'warning');
-      return;
-    }
-
     try {
       setError(null);
       setIsGenerating(true);
@@ -671,18 +666,21 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
         console.log('Using cached audio from database');
         base64Audio = audioData;
       } else {
+        // Only Pro/Max with auth can generate fresh audio; otherwise silently skip
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session || !subscriptionUsage?.features.audio) {
+          setIsGenerating(false);
+          setIsSpeaking(false);
+          return;
+        }
+
         if (audioData?.startsWith('blob:')) {
           console.log('Clearing invalid blob URL from cache');
           await updateNodeAudio(nodeId, null);
         }
+
         console.log('No cached audio, generating new audio');
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-
-        // Get current session for auth token
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          throw new Error('Not authenticated');
-        }
 
         const response = await fetch(
           `${supabaseUrl}/functions/v1/text-to-speech`,
