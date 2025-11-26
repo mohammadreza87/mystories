@@ -23,3 +23,6 @@ export type { UserProfile } from './useProfile';
 
 // Timer utilities (memory-safe timeouts and intervals)
 export { useTimeout, useInterval, useIsMounted, useSafeAsync } from './useTimeout';
+
+// Audio playback with word highlighting
+export { useAudioPlayback } from './useAudioPlayback';

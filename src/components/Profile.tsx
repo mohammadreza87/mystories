@@ -3,7 +3,8 @@ import { CheckCircle, Clock, Trophy, Loader, LogOut, User, Edit2, Trash2, Globe,
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/authContext';
 import { ProfileEdit } from './ProfileEdit';
-import { getUserStories, deleteStory, updateStoryVisibility, getFollowerCount, getFollowingCount } from '../lib/storyService';
+import { getUserStories, deleteStory, updateStoryVisibility } from '../lib/storyService';
+import { getFollowerCount, getFollowingCount } from '../lib/followService';
 import type { Story, UserProfile as UserProfileType } from '../lib/types';
 import { getUserSubscription, createCustomerPortalSession } from '../lib/subscriptionService';
 import UpgradeModal from './UpgradeModal';

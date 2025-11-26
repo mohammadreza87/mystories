@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Bird, Clock, Users, Loader, ThumbsUp, ThumbsDown, User, UserPlus, UserCheck, Book, Share2, CheckCircle2 } from 'lucide-react';
-import { getStories, updateStoryCoverImage, getUserReaction, addReaction, updateReaction, removeReaction, followUser, unfollowUser, isFollowing } from '../lib/storyService';
+import { getStories, updateStoryCoverImage, getUserReaction, addReaction, updateReaction, removeReaction } from '../lib/storyService';
+import { followUser, unfollowUser, isFollowing } from '../lib/followService';
 import { supabase } from '../lib/supabase';
 import type { Story, StoryReaction } from '../lib/types';
 import { useToast } from './Toast';
@@ -162,7 +163,7 @@ export function StoryLibrary({ onSelectStory, onViewProfile, userId }: StoryLibr
 
       for (const story of data) {
         if (story.created_by && story.created_by !== userId) {
-          const following = await isFollowing(userId, story.created_by);
+          const following = await isFollowing(story.created_by, userId);
           followingMap[story.created_by] = following;
         }
       }

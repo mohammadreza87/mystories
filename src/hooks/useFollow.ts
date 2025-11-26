@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { followUser, unfollowUser, isFollowing, getFollowerCount, getFollowingCount } from '../lib/storyService';
+import { followUser, unfollowUser, isFollowing, getFollowerCount, getFollowingCount } from '../lib/followService';
 import { queryKeys } from '../lib/queryClient';
 
 interface UseFollowResult {

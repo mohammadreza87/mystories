@@ -1,48 +1,54 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+/**
+ * Authentication context and hook.
+ *
+ * This provides the useAuth() hook that components use to access auth state.
+ * Internally uses the Zustand authStore for state management.
+ */
+
+import { createContext, useContext, useEffect, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase } from './supabase';
+import { useAuthStore } from '../stores/authStore';
+import type { UserProfile } from './database.types';
 
 interface AuthContextType {
   user: User | null;
+  profile: UserProfile | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const { user, profile, loading, initialize, signOut, refreshProfile } = useAuthStore();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
+    let cleanup: (() => void) | undefined;
+
+    initialize().then((unsubscribe) => {
+      cleanup = unsubscribe;
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      (async () => {
-        setUser(session?.user ?? null);
-        setLoading(false);
-      })();
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-  };
+    return () => {
+      cleanup?.();
+    };
+  }, [initialize]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut }}>
+    <AuthContext.Provider value={{ user, profile, loading, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export function useAuth() {
+/**
+ * Hook to access authentication state and actions.
+ *
+ * @returns { user, profile, loading, signOut, refreshProfile }
+ * @throws Error if used outside of AuthProvider
+ */
+export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');

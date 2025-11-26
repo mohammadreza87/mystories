@@ -1,6 +1,9 @@
 /**
  * Authentication store using Zustand.
- * Manages user authentication state across the application.
+ * Single source of truth for user authentication state.
+ *
+ * This store is used internally by AuthProvider in authContext.tsx.
+ * Components should use the useAuth() hook from authContext.tsx.
  */
 
 import { create } from 'zustand';
@@ -16,10 +19,7 @@ interface AuthState {
   initialized: boolean;
 
   // Actions
-  setUser: (user: User | null) => void;
-  setProfile: (profile: UserProfile | null) => void;
-  setLoading: (loading: boolean) => void;
-  initialize: () => Promise<void>;
+  initialize: () => Promise<() => void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -30,53 +30,48 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loading: true,
   initialized: false,
 
-  setUser: (user) => set({ user }),
-  setProfile: (profile) => set({ profile }),
-  setLoading: (loading) => set({ loading }),
-
   initialize: async () => {
-    if (get().initialized) return;
+    // Prevent double initialization
+    if (get().initialized) {
+      return () => {}; // No-op cleanup
+    }
+
+    set({ loading: true });
 
     try {
-      set({ loading: true });
-
       // Get current session
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session?.user) {
         set({ user: session.user });
-
-        // Fetch profile
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        if (profile) {
-          set({ profile });
-        }
+        // Fetch profile in parallel
+        get().refreshProfile();
       }
 
-      // Listen for auth changes
-      supabase.auth.onAuthStateChange(async (event, session) => {
-        const newUser = session?.user ?? null;
-        set({ user: newUser });
+      // Subscribe to auth changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (_event, session) => {
+          const newUser = session?.user ?? null;
+          set({ user: newUser });
 
-        if (newUser) {
-          const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', newUser.id)
-            .single();
-
-          set({ profile: profile ?? null });
-        } else {
-          set({ profile: null });
+          if (newUser) {
+            await get().refreshProfile();
+          } else {
+            set({ profile: null });
+          }
         }
-      });
-    } finally {
+      );
+
       set({ loading: false, initialized: true });
+
+      // Return cleanup function
+      return () => {
+        subscription.unsubscribe();
+      };
+    } catch (error) {
+      console.error('Auth initialization failed:', error);
+      set({ loading: false, initialized: true });
+      return () => {};
     }
   },
 
@@ -95,8 +90,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       .eq('id', user.id)
       .single();
 
-    if (profile) {
-      set({ profile });
-    }
+    set({ profile: profile ?? null });
   },
 }));
