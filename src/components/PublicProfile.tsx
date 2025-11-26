@@ -27,7 +27,7 @@ export function PublicProfile({ profileUserId, onBack, onSelectStory }: PublicPr
         if (mounted) setCurrentUserId(session?.user?.id || null);
 
         const { data: prof } = await supabase
-          .from('profiles')
+          .from('user_profiles')
           .select('display_name, bio, avatar_url, username, followers_count, following_count')
           .eq('id', profileUserId)
           .maybeSingle();

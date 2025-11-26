@@ -34,14 +34,14 @@ export async function trackChapterRead(
     }
 
     const { data: readerProfile } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .select('reading_points, total_points')
       .eq('id', userId)
       .maybeSingle();
 
     if (readerProfile) {
       await supabase
-        .from('profiles')
+        .from('user_profiles')
         .update({
           reading_points: (readerProfile.reading_points || 0) + 1,
           total_points: (readerProfile.total_points || 0) + 1,
@@ -51,14 +51,14 @@ export async function trackChapterRead(
 
     if (creatorId && creatorId !== userId) {
       const { data: creatorProfile } = await supabase
-        .from('profiles')
+        .from('user_profiles')
         .select('creating_points, total_points')
         .eq('id', creatorId)
         .maybeSingle();
 
       if (creatorProfile) {
         await supabase
-          .from('profiles')
+          .from('user_profiles')
           .update({
             creating_points: (creatorProfile.creating_points || 0) + 1,
             total_points: (creatorProfile.total_points || 0) + 1,
@@ -109,14 +109,14 @@ export async function trackStoryCompletion(
     }
 
     const { data: readerProfile } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .select('reading_points, total_points')
       .eq('id', userId)
       .maybeSingle();
 
     if (readerProfile) {
       await supabase
-        .from('profiles')
+        .from('user_profiles')
         .update({
           reading_points: (readerProfile.reading_points || 0) + 5,
           total_points: (readerProfile.total_points || 0) + 5,
@@ -126,14 +126,14 @@ export async function trackStoryCompletion(
 
     if (creatorId && creatorId !== userId) {
       const { data: creatorProfile } = await supabase
-        .from('profiles')
+        .from('user_profiles')
         .select('creating_points, total_points')
         .eq('id', creatorId)
         .maybeSingle();
 
       if (creatorProfile) {
         await supabase
-          .from('profiles')
+          .from('user_profiles')
           .update({
             creating_points: (creatorProfile.creating_points || 0) + 5,
             total_points: (creatorProfile.total_points || 0) + 5,
@@ -193,7 +193,7 @@ export async function resetStoryProgress(
 export async function getUserPoints(userId: string): Promise<PointsTransaction | null> {
   try {
     const { data, error } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .select('total_points, reading_points, creating_points')
       .eq('id', userId)
       .maybeSingle();
@@ -219,14 +219,14 @@ export async function awardStoryCreationPoints(
 ): Promise<void> {
   try {
     const { data: profile } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .select('creating_points, total_points')
       .eq('id', userId)
       .maybeSingle();
 
     if (profile) {
       await supabase
-        .from('profiles')
+        .from('user_profiles')
         .update({
           creating_points: (profile.creating_points || 0) + 5,
           total_points: (profile.total_points || 0) + 5,

@@ -44,7 +44,7 @@ export async function isFollowing(followingId: string): Promise<boolean> {
 
 export async function getFollowerCount(userId: string): Promise<number> {
   const { data } = await supabase
-    .from('profiles')
+    .from('user_profiles')
     .select('followers_count')
     .eq('id', userId)
     .maybeSingle();
@@ -54,7 +54,7 @@ export async function getFollowerCount(userId: string): Promise<number> {
 
 export async function getFollowingCount(userId: string): Promise<number> {
   const { data } = await supabase
-    .from('profiles')
+    .from('user_profiles')
     .select('following_count')
     .eq('id', userId)
     .maybeSingle();

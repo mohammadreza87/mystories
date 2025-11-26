@@ -47,7 +47,7 @@ export async function getQuests() {
     .maybeSingle();
 
   const { data: profile } = await supabase
-    .from('profiles')
+    .from('user_profiles')
     .select('points')
     .eq('id', session.user.id)
     .single();
