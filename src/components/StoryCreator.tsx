@@ -215,29 +215,55 @@ export function StoryCreator({ userId, onStoryCreated }: StoryCreatorProps) {
         : Promise.resolve(null);
 
       // Create story without waiting for cover image
-      const { data: story, error: storyError } = await supabase
+      // Insert story (fallback if art_style column not yet migrated)
+      let storyInsertError: any = null;
+      let story = null as Awaited<ReturnType<typeof supabase.from>>['data'] extends (infer R)[] ? R : never;
+
+      const insertPayload = {
+        title: generatedData.title,
+        description: generatedData.description,
+        age_range: generatedData.ageRange || audienceLabels[targetAudience].badge,
+        estimated_duration: generatedData.estimatedDuration || (targetAudience === 'adult' ? 25 : targetAudience === 'young_adult' ? 15 : 10),
+        story_context: generatedData.storyContext,
+        created_by: userId,
+        is_public: isPublic,
+        is_user_generated: tier === 'free',
+        generation_status: 'first_chapter_ready',
+        generation_progress: 10,
+        language: generatedData.language || 'en',
+        cover_image_url: null,
+        target_audience: targetAudience,
+        art_style: artStyle,
+        image_prompt: artStyle, // store chosen style as prompt hint for downstream
+      };
+
+      const { data: storyWithStyle, error: storyError } = await supabase
         .from('stories')
-        .insert({
-          title: generatedData.title,
-          description: generatedData.description,
-          age_range: generatedData.ageRange || audienceLabels[targetAudience].badge,
-          estimated_duration: generatedData.estimatedDuration || (targetAudience === 'adult' ? 25 : targetAudience === 'young_adult' ? 15 : 10),
-          story_context: generatedData.storyContext,
-          created_by: userId,
-          is_public: isPublic,
-          is_user_generated: tier === 'free',
-          generation_status: 'first_chapter_ready',
-          generation_progress: 10,
-          language: generatedData.language || 'en',
-          cover_image_url: null,
-          target_audience: targetAudience,
-          art_style: artStyle,
-          image_prompt: artStyle, // store chosen style as prompt hint for downstream
-        })
+        .insert(insertPayload)
         .select()
         .single();
 
-      if (storyError) throw storyError;
+      if (!storyError) {
+        story = storyWithStyle;
+      } else {
+        storyInsertError = storyError;
+        // Retry without art_style if the column is missing (migration not applied yet)
+        if (storyError.code === 'PGRST204') {
+          const { art_style, ...fallbackPayload } = insertPayload;
+          const { data: storyNoStyle, error: storyFallbackError } = await supabase
+            .from('stories')
+            .insert(fallbackPayload)
+            .select()
+            .single();
+          if (storyFallbackError) {
+            storyInsertError = storyFallbackError;
+          } else {
+            story = storyNoStyle;
+          }
+        }
+      }
+
+      if (!story) throw storyInsertError;
 
       // Update cover image in background when ready
       coverImagePromise.then(async (coverImageUrl) => {
