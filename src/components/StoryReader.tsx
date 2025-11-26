@@ -51,11 +51,29 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
   const latestChapterRef = useRef<HTMLDivElement | null>(null);
   const wordTimerRef = useRef<NodeJS.Timeout | null>(null);
   const currentChapterIdRef = useRef<string | null>(null);
+  const hasUserInteractedRef = useRef<boolean>(false);
 
   useEffect(() => {
     initializeStory();
     loadReactionData();
   }, [storyId]);
+
+  // Track user interaction to enable audio autoplay
+  useEffect(() => {
+    const markInteracted = () => {
+      hasUserInteractedRef.current = true;
+    };
+
+    document.addEventListener('click', markInteracted, { once: true });
+    document.addEventListener('touchstart', markInteracted, { once: true });
+    document.addEventListener('keydown', markInteracted, { once: true });
+
+    return () => {
+      document.removeEventListener('click', markInteracted);
+      document.removeEventListener('touchstart', markInteracted);
+      document.removeEventListener('keydown', markInteracted);
+    };
+  }, []);
 
   const loadReactionData = async () => {
     if (!userId) return;
@@ -126,10 +144,13 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
 
       if (isNewChapter && !latestChapter.node.is_ending && !isLoadingNode && hasContent) {
         currentChapterIdRef.current = latestChapter.node.id;
-        // Use safe timeout to prevent memory leaks on unmount
-        safeTimeout.set(() => {
-          speakText(latestChapter.node.content, latestChapter.node.id, latestChapter.node.audio_url);
-        }, 300);
+        // Only auto-play if user has interacted with the page (browser autoplay policy)
+        if (hasUserInteractedRef.current) {
+          // Use safe timeout to prevent memory leaks on unmount
+          safeTimeout.set(() => {
+            speakText(latestChapter.node.content, latestChapter.node.id, latestChapter.node.audio_url);
+          }, 300);
+        }
       }
     }
   }, [chapters]);
@@ -704,7 +725,8 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
           // Silently fail for billing issues - TTS is optional
           if (response.status === 400 || response.status === 429) {
             console.warn('Text-to-speech unavailable (billing inactive)');
-            setIsPlaying(false);
+            setIsSpeaking(false);
+            setIsGenerating(false);
             return;
           }
           const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -767,7 +789,18 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
       };
 
       console.log('Starting audio playback');
-      await audioRef.current.play();
+      try {
+        await audioRef.current.play();
+      } catch (playError) {
+        // Handle browser autoplay policy - don't show error, just silently fail
+        if (playError instanceof Error && playError.name === 'NotAllowedError') {
+          console.log('Audio autoplay blocked by browser policy - user interaction required');
+          setIsSpeaking(false);
+          setIsGenerating(false);
+          return;
+        }
+        throw playError;
+      }
       setIsGenerating(false);
     } catch (error) {
       console.error('Error in speakText:', error);
