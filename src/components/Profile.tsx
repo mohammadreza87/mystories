@@ -18,6 +18,7 @@ import { SEO } from './SEO';
 interface ProfileProps {
   userId: string;
   onSelectStory: (storyId: string) => void;
+  onEditStory?: (storyId: string) => void;
 }
 
 interface CompletedStory {
@@ -33,7 +34,7 @@ interface UserProfile {
   avatar_url: string;
 }
 
-export function Profile({ userId, onSelectStory }: ProfileProps) {
+export function Profile({ userId, onSelectStory, onEditStory }: ProfileProps) {
   const { user, signOut } = useAuth();
   const { showToast } = useToast();
   const { shareStory } = useShare();
@@ -550,6 +551,18 @@ export function Profile({ userId, onSelectStory }: ProfileProps) {
                       >
                         <Share2 className="w-5 h-5" />
                       </button>
+                      {onEditStory && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditStory(story.id);
+                          }}
+                          className="p-2 text-purple-600 hover:bg-purple-50 rounded-xl transition-colors"
+                          title="Edit story"
+                        >
+                          <Edit2 className="w-5 h-5" />
+                        </button>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

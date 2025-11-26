@@ -46,6 +46,9 @@ const Auth = lazy(() =>
 const ComicCreator = lazy(() =>
   import('../components/ComicCreator').then((m) => ({ default: m.ComicCreator }))
 );
+const StoryEditor = lazy(() =>
+  import('../components/StoryEditor').then((m) => ({ default: m.StoryEditor }))
+);
 
 /**
  * Route path constants for type-safe navigation.
@@ -54,6 +57,7 @@ export const ROUTES = {
   HOME: '/',
   STORY_DETAIL: '/story/:storyId',
   STORY_READ: '/story/:storyId/read',
+  STORY_EDIT: '/story/:storyId/edit',
   CREATE: '/create',
   CREATE_COMIC: '/create/comic',
   PROFILE: '/profile',
@@ -71,6 +75,7 @@ export const ROUTES = {
 export const buildRoute = {
   storyDetail: (storyId: string) => `/story/${storyId}`,
   storyRead: (storyId: string) => `/story/${storyId}/read`,
+  storyEdit: (storyId: string) => `/story/${storyId}/edit`,
   userProfile: (userId: string) => `/user/${userId}`,
 };
 
@@ -144,6 +149,25 @@ function StoryCreatorPage() {
   );
 }
 
+function StoryEditorPage() {
+  const { storyId } = useParams<{ storyId: string }>();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  if (!user) return <Navigate to="/auth/login" state={{ from: `/story/${storyId}/edit` }} replace />;
+  if (!storyId) return <Navigate to="/" replace />;
+
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <StoryEditor
+        storyId={storyId}
+        onBack={() => navigate(buildRoute.storyDetail(storyId))}
+        onSave={() => {}}
+      />
+    </Suspense>
+  );
+}
+
 function ComicCreatorPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -194,6 +218,7 @@ function ProfilePage() {
       <Profile
         userId={user.id}
         onSelectStory={(storyId) => navigate(buildRoute.storyDetail(storyId))}
+        onEditStory={(storyId) => navigate(buildRoute.storyEdit(storyId))}
       />
     </Suspense>
   );
@@ -283,6 +308,10 @@ export const router = createBrowserRouter([
       {
         path: 'story/:storyId/read',
         element: <StoryReaderPage />,
+      },
+      {
+        path: 'story/:storyId/edit',
+        element: <StoryEditorPage />,
       },
       {
         path: 'create',

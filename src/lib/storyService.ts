@@ -420,3 +420,101 @@ export async function getStoryGenerationStatus(storyId: string): Promise<{
     totalNodesPlanned: data.total_nodes_planned || 0,
   };
 }
+
+// ============================================================================
+// Story Edit Operations (for Basic, Pro, Max tiers)
+// ============================================================================
+
+export interface StoryUpdateData {
+  title?: string;
+  description?: string;
+  target_audience?: 'children' | 'young_adult' | 'adult';
+  art_style?: 'cartoon' | 'comic' | 'realistic';
+  story_context?: string | null;
+}
+
+export async function updateStory(storyId: string, data: StoryUpdateData): Promise<void> {
+  const { error } = await supabase
+    .from('stories')
+    .update(data)
+    .eq('id', storyId);
+
+  if (error) throw error;
+}
+
+export async function updateStoryNodeContent(nodeId: string, content: string): Promise<void> {
+  const { error } = await supabase
+    .from('story_nodes')
+    .update({ content })
+    .eq('id', nodeId);
+
+  if (error) throw error;
+}
+
+export async function updateStoryChoice(
+  choiceId: string,
+  data: { choice_text?: string; consequence_hint?: string | null }
+): Promise<void> {
+  const { error } = await supabase
+    .from('story_choices')
+    .update(data)
+    .eq('id', choiceId);
+
+  if (error) throw error;
+}
+
+export async function getStoryNodes(storyId: string): Promise<StoryNode[]> {
+  const { data, error } = await supabase
+    .from('story_nodes')
+    .select('*')
+    .eq('story_id', storyId)
+    .order('order_index', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getStoryChoices(storyId: string): Promise<StoryChoice[]> {
+  const { data, error } = await supabase
+    .from('story_choices')
+    .select(`
+      *,
+      from_node:story_nodes!story_choices_from_node_id_fkey(node_key)
+    `)
+    .in('from_node_id', (
+      await supabase
+        .from('story_nodes')
+        .select('id')
+        .eq('story_id', storyId)
+    ).data?.map(n => n.id) || [])
+    .order('choice_order', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getAllStoryChoices(storyId: string): Promise<(StoryChoice & { from_node: { node_key: string } })[]> {
+  // First get all node IDs for this story
+  const { data: nodes, error: nodesError } = await supabase
+    .from('story_nodes')
+    .select('id')
+    .eq('story_id', storyId);
+
+  if (nodesError) throw nodesError;
+  if (!nodes || nodes.length === 0) return [];
+
+  const nodeIds = nodes.map(n => n.id);
+
+  // Then get all choices for these nodes
+  const { data, error } = await supabase
+    .from('story_choices')
+    .select(`
+      *,
+      from_node:story_nodes!story_choices_from_node_id_fkey(node_key)
+    `)
+    .in('from_node_id', nodeIds)
+    .order('choice_order', { ascending: true });
+
+  if (error) throw error;
+  return (data || []) as (StoryChoice & { from_node: { node_key: string } })[];
+}
