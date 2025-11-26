@@ -1,7 +1,6 @@
 import { Crown, Sparkles } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { getSubscriptionUsage, SubscriptionUsage } from '../lib/subscriptionService';
 import { useAuth } from '../lib/authContext';
+import { useSubscriptionUsage } from '../hooks';
 
 interface UsageBadgeProps {
   onUpgradeClick?: () => void;
@@ -9,27 +8,7 @@ interface UsageBadgeProps {
 
 export default function UsageBadge({ onUpgradeClick }: UsageBadgeProps) {
   const { user } = useAuth();
-  const [usage, setUsage] = useState<SubscriptionUsage | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (user) {
-      loadUsage();
-    }
-  }, [user]);
-
-  const loadUsage = async () => {
-    if (!user) return;
-
-    try {
-      const data = await getSubscriptionUsage(user.id);
-      setUsage(data);
-    } catch (error) {
-      console.error('Error loading usage:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { usage, loading, remainingStories } = useSubscriptionUsage(user?.id);
 
   if (loading || !usage) {
     return null;
@@ -45,8 +24,6 @@ export default function UsageBadge({ onUpgradeClick }: UsageBadgeProps) {
     );
   }
 
-  const remaining = (usage.dailyLimit || 1) - usage.storiesGeneratedToday;
-
   return (
     <div className="inline-flex items-center gap-3">
       <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm">
@@ -55,7 +32,7 @@ export default function UsageBadge({ onUpgradeClick }: UsageBadgeProps) {
           {usage.storiesGeneratedToday} / {usage.dailyLimit}
         </span>
       </div>
-      {remaining === 0 && onUpgradeClick && (
+      {remainingStories === 0 && onUpgradeClick && (
         <button
           onClick={onUpgradeClick}
           className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full text-sm font-medium hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
