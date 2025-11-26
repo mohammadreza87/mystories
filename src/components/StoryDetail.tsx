@@ -80,19 +80,42 @@ export function StoryDetail({ storyId, userId, onBack, onStartStory }: StoryDeta
     }
   };
 
-  const isWaitingGeneration = story?.generation_status && story.generation_status !== 'fully_generated';
+  // Only block if story is in 'pending' state (initial creation not complete)
+  // Allow 'first_chapter_ready', 'generating_background', 'generating_full_story', and 'fully_generated'
+  const isStillPending = story?.generation_status === 'pending';
+  const hasFailed = story?.generation_status === 'generation_failed';
 
   if (loading) {
     return <LoadingState fullScreen message="Loading story..." />;
   }
 
-  if (!loading && story && isWaitingGeneration) {
+  if (!loading && story && isStillPending) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
         <div className="text-center max-w-md px-6">
           <Loader className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
-          <p className="text-gray-700 font-semibold mb-2">Story is still generating</p>
-          <p className="text-gray-500 text-sm mb-6">Please check back in a moment. We're creating the chapters and images.</p>
+          <p className="text-gray-700 font-semibold mb-2">Story is being created</p>
+          <p className="text-gray-500 text-sm mb-6">Please check back in a moment. We're setting up your story.</p>
+          <button
+            onClick={onBack}
+            className="px-6 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!loading && story && hasFailed) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center max-w-md px-6">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">⚠️</span>
+          </div>
+          <p className="text-gray-700 font-semibold mb-2">Story generation failed</p>
+          <p className="text-gray-500 text-sm mb-6">Something went wrong while creating this story. Please try creating a new one.</p>
           <button
             onClick={onBack}
             className="px-6 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-colors"

@@ -362,9 +362,14 @@ export async function startStoryGeneration(storyId: string, userId: string): Pro
 
   if (error) throw error;
 
-  // Use shared API client instead of manual auth handling
-  await apiRequest('process-story-queue', {
+  // Fire-and-forget: Start background generation without waiting for completion.
+  // The edge function will await the full generation process internally.
+  // We don't await here so the user can start reading immediately.
+  apiRequest('process-story-queue', {
     body: { storyId }
+  }).catch((err) => {
+    // Log but don't throw - generation continues on server even if request times out
+    console.error('Background generation request error:', err);
   });
 }
 
