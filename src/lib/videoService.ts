@@ -2,7 +2,8 @@ import { supabase } from './supabase';
 
 interface GenerateVideoParams {
   prompt: string;
-  motionStrength?: number; // 1-10, controls how much movement in the video
+  artStyle?: 'cartoon' | 'comic' | 'realistic'; // Art style for video generation
+  motionStrength?: number; // Kept for backward compatibility
   aspectRatio?: string;
 }
 
@@ -22,6 +23,7 @@ export async function generateChapterVideo(params: GenerateVideoParams): Promise
       },
       body: JSON.stringify({
         prompt: params.prompt,
+        artStyle: params.artStyle ?? 'comic', // Default to comic style
         motionStrength: params.motionStrength ?? 5,
         aspectRatio: params.aspectRatio ?? '16:9',
       }),

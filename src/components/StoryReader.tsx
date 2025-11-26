@@ -10,6 +10,21 @@ import type { StoryNode, StoryChoice, Story, StoryReaction } from '../lib/types'
 import { useToast } from './Toast';
 import { useTimeout, useSubscriptionUsage } from '../hooks';
 
+// Map target_audience to artStyle for video generation
+type ArtStyle = 'cartoon' | 'comic' | 'realistic';
+const getArtStyleFromAudience = (targetAudience?: 'children' | 'young_adult' | 'adult'): ArtStyle => {
+  switch (targetAudience) {
+    case 'children':
+      return 'cartoon';
+    case 'young_adult':
+      return 'comic';
+    case 'adult':
+      return 'realistic';
+    default:
+      return 'comic'; // Default to comic style
+  }
+};
+
 interface StoryReaderProps {
   storyId: string;
   userId: string;
@@ -179,7 +194,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
 
     generateChapterVideo({
       prompt: `${story?.title || 'Story'} - ${latest.node.content.slice(0, 400)}`,
-      motionStrength: 5,
+      artStyle: getArtStyleFromAudience(story?.target_audience),
       aspectRatio: '16:9',
     })
       .then((videoUrl) => {
@@ -196,7 +211,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
           [chapterId]: { url: null, generating: false },
         }));
       });
-  }, [chapters, chapterVideos, story?.title, subscriptionUsage?.features.video]);
+  }, [chapters, chapterVideos, story?.title, story?.target_audience, subscriptionUsage?.features.video]);
 
   const generateUniqueNodeKey = (): string => {
     return `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -1066,8 +1081,27 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
                   </div>
                 ) : null}
 
+                <div className="prose prose-lg max-w-none">
+                  <p className="text-xl md:text-2xl leading-relaxed text-gray-800">
+                    {chapter.node.content.split(/\s+/).map((word, index) => (
+                      <span key={index}>
+                        <span
+                          className={`transition-all duration-200 ${
+                            playingChapterId === chapter.node.id && index === currentWordIndex
+                              ? 'bg-yellow-300 text-gray-900 px-1 rounded font-semibold'
+                              : ''
+                          }`}
+                        >
+                          {word}
+                        </span>
+                        {' '}
+                      </span>
+                    ))}
+                  </p>
+                </div>
+
                 {subscriptionUsage?.features.video && (
-                  <div className="mb-6">
+                  <div className="mt-6 mb-6">
                     {chapterVideos[chapter.node.id]?.url ? (
                       <video
                         controls
@@ -1084,7 +1118,7 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
                           try {
                             const videoUrl = await generateChapterVideo({
                               prompt: `${story?.title || 'Story'} - ${chapter.node.content.slice(0, 400)}`,
-                              motionStrength: 5,
+                              artStyle: getArtStyleFromAudience(story?.target_audience),
                               aspectRatio: '16:9',
                             });
                             setChapterVideos((prev) => ({
@@ -1108,25 +1142,6 @@ export function StoryReader({ storyId, userId, onComplete }: StoryReaderProps) {
                     )}
                   </div>
                 )}
-
-                <div className="prose prose-lg max-w-none">
-                  <p className="text-xl md:text-2xl leading-relaxed text-gray-800">
-                    {chapter.node.content.split(/\s+/).map((word, index) => (
-                      <span key={index}>
-                        <span
-                          className={`transition-all duration-200 ${
-                            playingChapterId === chapter.node.id && index === currentWordIndex
-                              ? 'bg-yellow-300 text-gray-900 px-1 rounded font-semibold'
-                              : ''
-                          }`}
-                        >
-                          {word}
-                        </span>
-                        {' '}
-                      </span>
-                    ))}
-                  </p>
-                </div>
 
                 {chapter.node.is_ending && (
                   <div className="mt-8 text-center">
